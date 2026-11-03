@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5eee7" />
+    <title>Un'idea per noi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Torna all'inizio">
+          <span class="brand-mark">✦</span>
+          <span>un'idea per noi</span>
+        </a>
+        <span class="top-note">made with a little courage <span>♡</span></span>
+      </header>
+
+      <section class="intro" id="intro">
+        <div class="eyebrow"><span class="eyebrow-dot"></span> una domanda importante</div>
+        <h1>Ti va di uscire<br /><em>con me?</em></h1>
+        <p class="intro-copy">Ho pensato a qualcosa di carino.<br />Tu devi solo scegliere.</p>
+        <button class="primary-button start-button" data-go-to="step-1">
+          Iniziamo <span class="button-arrow">↗</span>
+        </button>
+        <div class="floating-note note-left">no pressure<br /><span>solo belle vibes</span></div>
+        <div class="floating-note note-right">a little<br /><span>date proposal</span></div>
+        <div class="intro-sparkles" aria-hidden="true">✦<span>·</span>✧<span>·</span>✦</div>
+      </section>
+
+      <section class="steps-panel" aria-label="Crea il tuo appuntamento">
+        <div class="progress-track">
+          <div class="progress-line"><span id="progress-bar"></span></div>
+          <div class="progress-step active" data-step-indicator="1"><span>01</span><small>La risposta</small></div>
+          <div class="progress-step" data-step-indicator="2"><span>02</span><small>Quando</small></div>
+          <div class="progress-step" data-step-indicator="3"><span>03</span><small>Dove</small></div>
+        </div>
+
+        <form id="date-form">
+          <section class="form-step active" id="step-1" data-step="1">
+            <div class="step-heading">
+              <span class="step-kicker">01 — LA DOMANDA</span>
+              <h2>Partiamo dall'inizio.</h2>
+              <p>Prometto che sarà una serata semplice,<br />ma con il giusto tocco speciale.</p>
+            </div>
+            <div class="answer-grid">
+              <button type="button" class="answer-card answer-yes" data-answer="Sì, volentieri!">
+                <span class="answer-icon">♡</span>
+                <strong>Sì</strong>
+                <small>mi hai convinta/o</small>
+                <span class="card-corner">↗</span>
+              </button>
+              <button type="button" class="answer-card answer-no" data-answer="No">
+                <span class="answer-icon">☹</span>
+                <strong>No</strong>
+                <small>non puoi scappare</small>
+                <span class="card-corner">↗</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="yes-screen" id="yes-screen">
+            <div class="yes-photo-frame">
+              <img src="IMG_1129.jpeg" alt="Un ricordo speciale" />
+              <span class="photo-star">✦</span>
+            </div>
+            <span class="step-kicker">LA RISPOSTA GIUSTA</span>
+            <h2>Yess! ♡</h2>
+            <p>Sapevo che avresti detto di sì.<br />Adesso scegliamo il nostro momento.</p>
+            <button type="button" class="primary-button" id="continue-after-yes">Scegliamo quando <span>↗</span></button>
+          </section>
+
+          <section class="form-step" id="step-2" data-step="2">
+            <div class="step-heading">
+              <span class="step-kicker">02 — IL MOMENTO</span>
+              <h2>Scegliamo il quando.</h2>
+              <p>Un momento tutto nostro, senza fretta.</p>
+            </div>
+            <div class="choice-grid date-grid">
+              <button type="button" class="choice-card" data-date="Venerdì 15 novembre">
+                <span class="choice-day">VEN</span><strong>15</strong><span>NOV</span>
+                <i>perfetto per iniziare</i>
+              </button>
+              <button type="button" class="choice-card" data-date="Sabato 16 novembre">
+                <span class="choice-day">SAB</span><strong>16</strong><span>NOV</span>
+                <i>weekend mood</i>
+              </button>
+              <button type="button" class="choice-card" data-date="Domenica 17 novembre">
+                <span class="choice-day">DOM</span><strong>17</strong><span>NOV</span>
+                <i>slow sunday</i>
+              </button>
+            </div>
+            <label class="custom-date">Oppure scegli una data diversa
+              <input type="date" id="custom-date" />
+            </label>
+            <div class="step-actions"><button type="button" class="text-button back-button">← indietro</button><button type="button" class="primary-button next-button" data-next="3">Avanti <span>↗</span></button></div>
+          </section>
+
+          <section class="form-step" id="step-3" data-step="3">
+            <div class="step-heading">
+              <span class="step-kicker">03 — IL POSTO</span>
+              <h2>Ho qualche idea.</h2>
+              <p>Tu scegli l'atmosfera che ti va di più.</p>
+            </div>
+            <div class="place-grid">
+              <button type="button" class="place-card" data-place="Aperitivo e passeggiata"><span class="place-emoji">🍸</span><strong>Aperitivo<br />e passeggiata</strong><small>easy &amp; chic</small><span class="radio"></span></button>
+              <button type="button" class="place-card" data-place="Cena in un posticino carino"><span class="place-emoji">🍝</span><strong>Cena in un<br />posticino carino</strong><small>good food, good mood</small><span class="radio"></span></button>
+              <button type="button" class="place-card" data-place="Giro a Milano"><span class="place-emoji">🌆</span><strong>Giro<br />a Milano</strong><small>city lights &amp; good vibes</small><span class="radio"></span></button>
+            </div>
+            <div class="step-actions"><button type="button" class="text-button back-button">← indietro</button><button type="submit" class="primary-button">Conferma l'idea <span>↗</span></button></div>
+          </section>
+        </form>
+
+        <section class="success-screen" id="success-screen">
+          <div class="success-flower">✦</div>
+          <span class="step-kicker">INVITO PRONTO</span>
+          <h2>Allora è un appuntamento.</h2>
+          <p>Non vedo l'ora di passare del tempo insieme.</p>
+          <div class="summary-card">
+            <span id="summary-answer">Sì, volentieri!</span>
+            <strong id="summary-date">Sabato 16 novembre</strong>
+            <span id="summary-place">Cena in un posticino carino</span>
+          </div>
+          <div class="success-actions">
+            <button type="button" class="primary-button" id="whatsapp-button">Invia su WhatsApp <span>↗</span></button>
+            <button type="button" class="text-button" id="restart-button">ricomincia</button>
+          </div>
+        </section>
+      </section>
+
+      <footer><span>un piccolo invito, fatto con cura</span></footer>
+    </main>
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+    <script src="script.js"></script>
+  </body>
+</html>
