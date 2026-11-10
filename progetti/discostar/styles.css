@@ -240,20 +240,22 @@ h2 { font-family: var(--display); font-size: clamp(1.8rem, 3.4vw, 2.6rem); lette
 .shop-info dt { color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; padding-top: 2px; }
 .shop-info dd a { color: var(--accent); text-decoration: none; }
 .shop-map {
-  border-radius: var(--radius); min-height: 300px; position: relative; overflow: hidden;
-  background:
-    linear-gradient(90deg, transparent 49.5%, rgba(255,255,255,.06) 50%, transparent 50.5%) 0 0 / 60px 60px,
-    linear-gradient(0deg, transparent 49.5%, rgba(255,255,255,.06) 50%, transparent 50.5%) 0 0 / 60px 60px,
-    radial-gradient(circle at 50% 50%, #3a1a0c, var(--bg-2) 70%);
-  border: 1px solid var(--line);
-  display: grid; place-items: center; align-content: center; gap: 10px;
+  border-radius: var(--radius); min-height: 380px; position: relative; overflow: hidden;
+  border: 1px solid var(--line); background: var(--bg-2);
 }
-.pin {
-  width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--accent); color: #fff; font-size: 1.6rem;
-  box-shadow: 0 0 0 12px rgba(255,90,31,.2), 0 0 0 28px rgba(255,90,31,.08);
+.shop-map iframe {
+  position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+  /* mappa scura in tema col sito; torna a colori al passaggio del mouse */
+  filter: invert(.9) hue-rotate(180deg) saturate(.8);
+  transition: filter .4s;
 }
-.shop-map span { font-family: var(--display); letter-spacing: .4em; color: var(--muted); margin-top: 18px; }
+.shop-map:hover iframe { filter: none; }
+.map-link {
+  position: absolute; left: 14px; bottom: 14px; z-index: 1;
+  background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; font-size: .9rem;
+  padding: 9px 16px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+}
+.loading { color: var(--muted); grid-column: 1 / -1; padding: 40px 0; }
 
 /* ---------- Footer ---------- */
 .footer {

@@ -61,6 +61,29 @@
 .form-grid .check { flex-direction: row; align-items: center; align-self: end; padding-bottom: 10px; }
 .form-actions { display: flex; gap: 10px; margin-top: 24px; }
 
+.narrow { max-width: 640px; }
+.steps { margin: 20px 0 0 20px; display: grid; gap: 10px; color: var(--muted); }
+.steps b, .steps i { color: var(--text); }
+.steps a { color: var(--accent); }
+.steps code, .notice code { background: var(--bg-2); padding: 1px 6px; border-radius: 4px; font-size: .85rem; color: var(--text); }
+.login-card { margin-top: 40px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px; display: grid; gap: 14px; }
+.login-card label { display: grid; gap: 6px; color: var(--muted); font-size: .85rem; }
+.login-card .admin-title { margin-bottom: 6px; }
+.error { color: #ff6b6b; font-size: .9rem; }
+.nav { align-items: center; }
+.save-state { font-size: .85rem; color: var(--muted); }
+.save-state.ok { color: #6fdc8c; }
+.save-state.err { color: #ff6b6b; }
+.cell-input {
+  width: 74px; text-align: right; background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 3px 6px;
+}
+.cell-input:hover { border-color: var(--line); }
+.cell-input:focus { outline: 0; border-color: var(--accent); background: var(--bg); }
+.stock .cell-input { width: 48px; text-align: center; }
+.stock .cell-input.zero { color: #ff6b6b; }
+.help ul { margin: 12px 0 0 20px; display: grid; gap: 6px; }
+.readonly .stock button, .readonly .cell-input, .readonly input[type="checkbox"], .readonly #addBtn { pointer-events: none; opacity: .5; }
+
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 100;
   background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 999px; font-weight: 600;

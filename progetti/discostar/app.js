@@ -1,14 +1,8 @@
-/* Dati del negozio: sostituisci con quelli reali. */
-const SHOP = {
-  address: "Via ______, 41121 Modena (MO)",
-  hours: "Mar–Sab 9:30–12:30 · 15:30–19:30",
-  phone: "+39 059 000 0000",
-  email: "info@discostar.it",
-  whatsapp: "390000000000", // solo cifre, con prefisso internazionale
-};
+/* Dati del negozio e del database: config.js */
+const SHOP = window.DISCOSTAR.shop;
 
 const FORMATS = { LP: "Vinili", CD: "CD", DVD: "DVD" };
-const items = window.CATALOG || [];
+let items = [];
 const $ = (sel) => document.querySelector(sel);
 
 const state = { format: "", query: "", genre: "", decade: "", condition: "", sort: "artist", inStock: false };
@@ -180,10 +174,22 @@ function setupStatic() {
     <dt>Orari</dt><dd>${esc(SHOP.hours)}</dd>
     <dt>Telefono</dt><dd><a href="tel:${SHOP.phone.replace(/\s/g, "")}">${esc(SHOP.phone)}</a></dd>
     <dt>Email</dt><dd><a href="mailto:${SHOP.email}">${esc(SHOP.email)}</a></dd>`;
+}
+
+function setupMap() {
+  const q = encodeURIComponent(SHOP.mapQuery);
+  $("#mapFrame").src = `https://www.google.com/maps?q=${q}&z=16&output=embed`;
+  $("#mapLink").href = `https://www.google.com/maps/search/?api=1&query=${q}`;
   $("#year").textContent = new Date().getFullYear();
 }
 
-setupStatic();
-setupFilters();
-setupModal();
-render();
+async function init() {
+  setupMap();
+  setupModal();
+  items = await window.loadCatalog();
+  setupStatic();
+  setupFilters();
+  render();
+}
+
+init();

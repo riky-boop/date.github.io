@@ -1,24 +1,20 @@
-/* Gestione catalogo: le modifiche restano in bozza nel browser finché non scarichi catalog.js. */
-const DRAFT_KEY = "discostar-catalog-draft";
+/* Gestione catalogo: ogni modifica viene salvata subito su Supabase. */
 const FIELDS = ["format", "artist", "title", "year", "genre", "label", "price", "condition", "stock", "isNew"];
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const euro = (n) => n.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+const round2 = (n) => Math.round(n * 100) / 100;
 
-const fromFile = () => JSON.parse(JSON.stringify(window.CATALOG || []));
-let items = loadDraft() || fromFile();
+const { supabaseUrl, supabaseAnonKey } = window.DISCOSTAR;
+let db = null;
+let items = [];
 let editingId = null;
+let canEdit = false;
 const view = { search: "", format: "", onlyOut: false, sort: "artist", desc: false };
 
-function loadDraft() {
-  try { return JSON.parse(localStorage.getItem(DRAFT_KEY)); } catch { return null; }
-}
-
-function save(message) {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(items));
-  render();
-  if (message) toast(message);
+function show(id) {
+  for (const v of ["setupView", "loginView", "appView"]) $("#" + v).hidden = v !== id;
+  $("#logoutBtn").hidden = id !== "appView";
 }
 
 function toast(text) {
@@ -26,12 +22,95 @@ function toast(text) {
   t.textContent = text;
   t.hidden = false;
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => (t.hidden = true), 2200);
+  toast.timer = setTimeout(() => (t.hidden = true), 2400);
 }
 
-function nextId() {
-  return items.reduce((max, i) => Math.max(max, i.id), 0) + 1;
+function saveState(text, cls = "") {
+  const s = $("#saveState");
+  s.textContent = text;
+  s.className = "save-state " + cls;
 }
+
+/* Le scritture vengono eseguite una alla volta, nell'ordine dei clic. */
+let queue = Promise.resolve();
+let pending = 0;
+function write(label, op) {
+  pending++;
+  saveState("Salvataggio…");
+  const run = queue.then(async () => {
+    const { data, error } = await op();
+    if (error) throw error;
+    return data;
+  });
+  queue = run.catch(() => {});
+  return run
+    .then((data) => { if (--pending === 0) saveState("Salvato ✓", "ok"); return data; })
+    .catch((err) => {
+      pending--;
+      saveState("Errore di salvataggio", "err");
+      toast(`${label}: non salvato (${err.message || err})`);
+      throw err;
+    });
+}
+
+/* ---------- Avvio e accesso ---------- */
+async function start() {
+  if (!supabaseUrl || !supabaseAnonKey || !window.supabase) return show("setupView");
+  db = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+  const { data } = await db.auth.getSession();
+  if (data.session) enterApp();
+  else show("loginView");
+}
+
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target.elements;
+  $("#loginError").hidden = true;
+  const { error } = await db.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
+  if (error) {
+    $("#loginError").textContent = "Email o password non corretti.";
+    $("#loginError").hidden = false;
+    return;
+  }
+  f.password.value = "";
+  enterApp();
+});
+
+$("#logoutBtn").addEventListener("click", async () => {
+  await db.auth.signOut();
+  items = [];
+  saveState("");
+  show("loginView");
+});
+
+async function enterApp() {
+  show("appView");
+  $("#rows").innerHTML = `<tr><td colspan="10" class="muted">Caricamento…</td></tr>`;
+  const { data: isAdmin } = await db.rpc("is_admin");
+  canEdit = !!isAdmin;
+  $("#notAdmin").hidden = canEdit;
+  $("#appView").classList.toggle("readonly", !canEdit);
+  try {
+    items = await fetchAll();
+  } catch (err) {
+    $("#rows").innerHTML = `<tr><td colspan="10" class="error">Impossibile caricare il catalogo: ${esc(err.message)}</td></tr>`;
+    return;
+  }
+  render();
+}
+
+async function fetchAll() {
+  const PAGE = 1000, all = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db.from("items").select("*").order("id").range(from, from + PAGE - 1);
+    if (error) throw error;
+    all.push(...data.map(clean));
+    if (data.length < PAGE) return all;
+  }
+}
+
+const clean = (i) => ({ ...i, price: +i.price, year: +i.year || 0, stock: +i.stock || 0 });
+const pick = (o) => Object.fromEntries(FIELDS.map((f) => [f, o[f]]));
 
 /* ---------- Tabella ---------- */
 function visible() {
@@ -55,13 +134,13 @@ function render() {
       <td><span class="fmt-pill">${i.format}</span></td>
       <td>${esc(i.artist)}</td>
       <td class="title">${esc(i.title)}</td>
-      <td>${i.year}</td>
+      <td>${i.year || ""}</td>
       <td>${esc(i.genre)}</td>
       <td>${i.condition}</td>
-      <td class="num">${euro(i.price)}</td>
+      <td class="num"><input class="cell-input" type="number" step="0.01" min="0" data-act="price" value="${i.price.toFixed(2)}" aria-label="Prezzo" /></td>
       <td class="num"><span class="stock">
         <button data-act="dec" aria-label="Diminuisci">−</button>
-        <b class="${i.stock === 0 ? "zero" : ""}">${i.stock}</b>
+        <input class="cell-input${i.stock === 0 ? " zero" : ""}" type="number" min="0" data-act="stock" value="${i.stock}" aria-label="Pezzi" />
         <button data-act="inc" aria-label="Aumenta">+</button>
       </span></td>
       <td><input type="checkbox" data-act="new" ${i.isNew ? "checked" : ""} aria-label="Nuovo arrivo" /></td>
@@ -71,7 +150,7 @@ function render() {
   const count = (f) => items.filter((i) => i.format === f).length;
   const out = items.filter((i) => i.stock === 0).length;
   $("#summary").textContent = `${items.length} articoli · ${count("LP")} LP · ${count("CD")} CD · ${count("DVD")} DVD · ${out} esauriti`;
-  $("#draftNotice").hidden = !localStorage.getItem(DRAFT_KEY);
+  $("#emptyDb").hidden = items.length > 0 || !canEdit;
   document.querySelectorAll("th[data-sort]").forEach((th) => {
     th.classList.toggle("sorted", th.dataset.sort === view.sort);
     th.classList.toggle("desc", th.dataset.sort === view.sort && view.desc);
@@ -79,16 +158,37 @@ function render() {
   $("#genreList").innerHTML = [...new Set(items.map((i) => i.genre))].sort().map((g) => `<option value="${esc(g)}">`).join("");
 }
 
+/* Modifica di un campo con aggiornamento immediato e ripristino in caso di errore. */
+function patch(item, changes) {
+  const before = pick(item);
+  Object.assign(item, changes);
+  render();
+  return write(`${item.title}`, () => db.from("items").update(changes).eq("id", item.id))
+    .catch(() => { Object.assign(item, before); render(); });
+}
+
 $("#rows").addEventListener("click", (e) => {
   const act = e.target.dataset.act;
   const row = e.target.closest("tr[data-id]");
   if (!act || !row) return;
   const item = items.find((i) => i.id === +row.dataset.id);
-  if (act === "inc") item.stock++;
-  if (act === "dec") item.stock = Math.max(0, item.stock - 1);
-  if (act === "new") item.isNew = e.target.checked;
-  if (act === "edit") return openEditor(item);
-  save();
+  if (act === "inc") patch(item, { stock: item.stock + 1 });
+  if (act === "dec" && item.stock > 0) patch(item, { stock: item.stock - 1 });
+  if (act === "new") patch(item, { isNew: e.target.checked });
+  if (act === "edit") openEditor(item);
+});
+
+$("#rows").addEventListener("change", (e) => {
+  const act = e.target.dataset.act;
+  if (act !== "price" && act !== "stock") return;
+  const item = items.find((i) => i.id === +e.target.closest("tr").dataset.id);
+  const value = act === "price" ? round2(+e.target.value) : Math.floor(+e.target.value);
+  if (!(value >= 0)) return render();
+  if (value !== item[act]) patch(item, { [act]: value });
+});
+
+$("#rows").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.classList.contains("cell-input")) e.target.blur();
 });
 
 document.querySelector("thead").addEventListener("click", (e) => {
@@ -106,11 +206,11 @@ $("#fOut").addEventListener("change", (e) => { view.onlyOut = e.target.checked; 
 /* ---------- Editor ---------- */
 const form = $("#form");
 
-function openEditor(item) {
+function openEditor(item, prefill) {
   editingId = item ? item.id : null;
   $("#formTitle").textContent = item ? "Modifica articolo" : "Nuovo articolo";
-  $("#deleteBtn").hidden = !item;
-  const data = item || { format: "LP", condition: "Nuovo", year: new Date().getFullYear(), stock: 1, isNew: true };
+  $("#deleteBtn").hidden = $("#duplicateBtn").hidden = !item || !canEdit;
+  const data = item || prefill || { format: "LP", condition: "Nuovo", year: new Date().getFullYear(), stock: 1, isNew: true };
   for (const f of FIELDS) {
     const input = form.elements[f];
     if (input.type === "checkbox") input.checked = !!data[f];
@@ -120,44 +220,75 @@ function openEditor(item) {
   form.elements.artist.focus();
 }
 
-form.addEventListener("submit", () => {
+function formData() {
   const el = form.elements;
-  const data = {
+  return {
     format: el.format.value,
     artist: el.artist.value.trim(),
     title: el.title.value.trim(),
     year: +el.year.value,
     genre: el.genre.value.trim(),
     label: el.label.value.trim(),
-    price: Math.round(+el.price.value * 100) / 100,
+    price: round2(+el.price.value),
     condition: el.condition.value,
-    stock: +el.stock.value,
+    stock: Math.floor(+el.stock.value),
     isNew: el.isNew.checked,
   };
-  if (editingId) Object.assign(items.find((i) => i.id === editingId), data);
-  else items.push({ id: nextId(), ...data });
-  save(editingId ? "Articolo aggiornato" : "Articolo aggiunto");
+}
+
+form.addEventListener("submit", async () => {
+  const data = formData();
+  if (editingId) {
+    await patch(items.find((i) => i.id === editingId), data);
+    return toast("Articolo aggiornato");
+  }
+  try {
+    const row = await write("Nuovo articolo", () => db.from("items").insert(data).select().single());
+    items.push(clean(row));
+    render();
+    toast("Articolo aggiunto");
+  } catch {}
 });
 
 $("#cancelBtn").addEventListener("click", () => $("#editor").close());
-$("#deleteBtn").addEventListener("click", () => {
+
+$("#duplicateBtn").addEventListener("click", () => {
+  const copy = formData();
+  $("#editor").close();
+  openEditor(null, copy);
+});
+
+$("#deleteBtn").addEventListener("click", async () => {
   const item = items.find((i) => i.id === editingId);
   if (!confirm(`Eliminare "${item.title}" di ${item.artist}?`)) return;
-  items = items.filter((i) => i.id !== editingId);
   $("#editor").close();
-  save("Articolo eliminato");
+  try {
+    await write("Eliminazione", () => db.from("items").delete().eq("id", item.id));
+    items = items.filter((i) => i.id !== item.id);
+    render();
+    toast("Articolo eliminato");
+  } catch {}
 });
+
 $("#addBtn").addEventListener("click", () => openEditor(null));
 
-$("#resetBtn").addEventListener("click", () => {
-  if (!confirm("Annullare tutte le modifiche non pubblicate e ricaricare il catalogo dal file?")) return;
-  localStorage.removeItem(DRAFT_KEY);
-  items = fromFile();
-  render();
-  toast("Catalogo ricaricato dal file");
+async function insertMany(rows) {
+  const saved = [];
+  for (let i = 0; i < rows.length; i += 500) {
+    saved.push(...await write("Importazione", () => db.from("items").insert(rows.slice(i, i + 500)).select()));
+  }
+  return saved.map(clean);
+}
+
+$("#seedBtn").addEventListener("click", async () => {
+  try {
+    items = await insertMany((window.CATALOG || []).map(pick));
+    render();
+    toast(`${items.length} articoli di esempio caricati`);
+  } catch {}
 });
 
-/* ---------- Esportazione catalog.js ---------- */
+/* ---------- CSV ---------- */
 function download(name, content, type) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([content], { type }));
@@ -166,37 +297,18 @@ function download(name, content, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-function catalogJS() {
-  const lines = [...items]
-    .sort((a, b) => a.id - b.id)
-    .map((i) => "  " + JSON.stringify({ id: i.id, ...Object.fromEntries(FIELDS.map((f) => [f, i[f]])) }));
-  return `/*
-  CATALOGO DISCOSTAR
-  Generato da admin.html il ${new Date().toLocaleString("it-IT")}.
-  Per modificarlo apri admin.html, poi sostituisci questo file con quello scaricato.
-*/
-window.CATALOG = [
-${lines.join(",\n")}
-];
-`;
-}
-
-$("#downloadBtn").addEventListener("click", () => {
-  download("catalog.js", catalogJS(), "text/javascript");
-  toast("catalog.js scaricato: sostituiscilo sul sito");
-});
-
-/* ---------- CSV ---------- */
 $("#exportCsv").addEventListener("click", () => {
+  const cols = ["id", ...FIELDS];
   const cell = (v) => (/[;"\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
-  const rows = items.map((i) => FIELDS.map((f) =>
+  const rows = items.map((i) => cols.map((f) =>
     f === "price" ? String(i.price).replace(".", ",") : f === "isNew" ? (i.isNew ? "si" : "no") : cell(i[f])).join(";"));
-  download("catalogo-discostar.csv", "﻿" + [FIELDS.join(";"), ...rows].join("\n"), "text/csv");
+  download(`catalogo-discostar-${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + [cols.join(";"), ...rows].join("\n"), "text/csv");
 });
 
 function parseCSV(text) {
   text = text.replace(/^﻿/, "");
-  const sep = (text.split("\n")[0].match(/;/g) || []).length >= (text.split("\n")[0].match(/,/g) || []).length ? ";" : ",";
+  const first = text.split("\n")[0];
+  const sep = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ";" : ",";
   const rows = [];
   let row = [], cur = "", quoted = false;
   for (let i = 0; i < text.length; i++) {
@@ -225,19 +337,20 @@ function rowsToItems(rows) {
     const o = Object.fromEntries(head.map((h, i) => [h, (r[i] ?? "").trim()]));
     const format = o.format.toUpperCase();
     if (!["LP", "CD", "DVD"].includes(format) || !o.artist || !o.title) return skipped.push(n + 2);
-    ok.push({
-      id: ok.length + 1,
+    const item = {
       format,
       artist: o.artist,
       title: o.title,
-      year: parseInt(o.year) || 0,
+      year: parseInt(o.year) || null,
       genre: o.genre || "Altro",
       label: o.label || "",
-      price: parseFloat(String(o.price).replace(/[€\s]/g, "").replace(",", ".")) || 0,
+      price: round2(parseFloat(String(o.price).replace(/[€\s]/g, "").replace(",", ".")) || 0),
       condition: /^usat/i.test(o.condition) ? "Usato" : "Nuovo",
-      stock: parseInt(o.stock) || 0,
+      stock: Math.max(0, parseInt(o.stock) || 0),
       isNew: /^(si|sì|s|true|1|x|yes)$/i.test(o.isNew),
-    });
+    };
+    if (parseInt(o.id) > 0) item.id = parseInt(o.id);
+    ok.push(item);
   });
   return { ok, skipped };
 }
@@ -246,16 +359,32 @@ $("#importCsv").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   e.target.value = "";
   if (!file) return;
+  let parsed;
   try {
-    const { ok, skipped } = rowsToItems(parseCSV(await file.text()));
-    if (!ok.length) throw new Error("Nessuna riga valida trovata.");
-    const note = skipped.length ? `\n${skipped.length} righe non valide verranno saltate (righe ${skipped.slice(0, 10).join(", ")}${skipped.length > 10 ? "…" : ""}).` : "";
-    if (!confirm(`Importare ${ok.length} articoli? Il catalogo attuale verrà sostituito.${note}`)) return;
-    items = ok;
-    save(`${ok.length} articoli importati`);
+    parsed = rowsToItems(parseCSV(await file.text()));
+    if (!parsed.ok.length) throw new Error("Nessuna riga valida trovata.");
   } catch (err) {
-    alert("Importazione non riuscita: " + err.message);
+    return alert("Importazione non riuscita: " + err.message);
+  }
+  const known = new Set(items.map((i) => i.id));
+  const updates = parsed.ok.filter((i) => known.has(i.id));
+  const inserts = parsed.ok.filter((i) => !known.has(i.id)).map(pick);
+  const skippedNote = parsed.skipped.length
+    ? `\n${parsed.skipped.length} righe non valide verranno saltate (righe ${parsed.skipped.slice(0, 10).join(", ")}${parsed.skipped.length > 10 ? "…" : ""}).`
+    : "";
+  if (!confirm(`${updates.length} articoli da aggiornare, ${inserts.length} da aggiungere.${skippedNote}\nProcedere?`)) return;
+  try {
+    for (let i = 0; i < updates.length; i += 500) {
+      await write("Importazione", () => db.from("items").upsert(updates.slice(i, i + 500)).select());
+    }
+    await insertMany(inserts);
+    items = await fetchAll();
+    render();
+    toast(`Importati: ${updates.length} aggiornati, ${inserts.length} aggiunti`);
+  } catch {
+    items = await fetchAll().catch(() => items);
+    render();
   }
 });
 
-render();
+start();

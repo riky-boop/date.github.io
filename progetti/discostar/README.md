@@ -1,20 +1,33 @@
 # Discostar — sito catalogo
 
-Sito statico (HTML/CSS/JS, nessuna dipendenza) per scoprire vinili, CD e DVD del negozio Discostar di Modena.
+Sito statico (HTML/CSS/JS) per scoprire vinili, CD e DVD del negozio Discostar di Modena.
 
-## Aprire il sito
-Doppio clic su `index.html`, oppure pubblicalo così com'è su GitHub Pages / Netlify.
+| File | Cosa contiene |
+|---|---|
+| `config.js` | **dati del negozio** (indirizzo, mappa, orari, contatti) e chiavi del database |
+| `index.html`, `app.js`, `styles.css` | sito pubblico |
+| `admin.html`, `admin.js`, `admin.css` | gestione catalogo (con accesso) |
+| `data.js` | carica il catalogo dal database |
+| `catalog.js` | catalogo **di esempio**, usato finché il database non è collegato |
+| `supabase/schema.sql` | struttura del database e regole di sicurezza |
 
-## Aggiornare il catalogo
-Apri `admin.html` (non è linkata dal sito pubblico):
-- aggiungi, modifica, elimina articoli; +/− sui pezzi disponibili; spunta "Novità";
-- importa/esporta il catalogo in CSV (apribile con Excel);
-- clicca **Scarica catalog.js** e sostituisci il file `catalog.js` del sito.
+## Attivare la gestione online (una volta sola)
+Il catalogo vive in un database gratuito [Supabase](https://supabase.com): da `admin.html` si modifica e il sito si aggiorna subito, senza caricare file.
 
-Le modifiche restano in bozza nel browser finché non sostituisci il file.
-I dati attuali sono **di esempio**.
+1. Crea un account su supabase.com e un nuovo progetto (regione Europe).
+2. **SQL Editor** → incolla `supabase/schema.sql` → **Run**.
+3. **Authentication → Users → Add user**: email e password dell'amministratore.
+4. SQL Editor: `insert into admins (email) values ('email-amministratore');`
+5. **Authentication → Sign In / Providers**: disattiva *Allow new users to sign up*.
+6. **Project Settings → API**: copia *Project URL* e *anon public key* in `config.js`.
+7. Apri `admin.html`, accedi e premi **Carica il catalogo di esempio** (o importa un CSV).
 
-> Nota: il sito è statico, quindi `admin.html` non salva nulla sul server e non serve una password: chi la apre può solo scaricare un file, non cambiare il sito.
+La *anon key* è pubblica per natura: chiunque può **leggere** il catalogo, solo le email nella tabella `admins` possono **modificarlo**.
 
-## Dati del negozio
-In cima a `app.js` c'è l'oggetto `SHOP` (indirizzo, orari, telefono, email, numero WhatsApp): sostituisci i segnaposto con quelli reali.
+## Usare la gestione
+- Prezzo e pezzi si modificano direttamente in tabella (+/−); "Novità" con la spunta.
+- **Modifica** per gli altri campi, **Duplica** per un'altra copia (es. usato), **Elimina**.
+- **Esporta CSV** → modifica in Excel → **Importa CSV**: le righe con `id` vengono aggiornate, quelle senza vengono aggiunte; l'importazione non elimina nulla.
+
+## Pubblicazione
+Carica la cartella su GitHub Pages, Netlify o qualunque hosting statico.

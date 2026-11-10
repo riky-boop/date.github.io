@@ -77,7 +77,7 @@
       </div>
     </div>
 
-    <div class="grid" id="grid"></div>
+    <div class="grid" id="grid"><p class="loading">Caricamento catalogo…</p></div>
     <div class="empty" id="empty" hidden>
       <p>Nessun risultato. Non trovi quello che cerchi? <a href="#negozio">Chiedi a noi</a>: possiamo ordinarlo.</p>
     </div>
@@ -89,9 +89,9 @@
       <p>Il catalogo online è una vetrina: per acquistare, prenotare o chiedere un titolo che non vedi, passa in negozio o contattaci.</p>
       <dl class="shop-info" id="shopInfo"></dl>
     </div>
-    <div class="shop-map" aria-hidden="true">
-      <div class="pin">★</div>
-      <span>MODENA</span>
+    <div class="shop-map">
+      <iframe id="mapFrame" title="Mappa: come raggiungere Discostar" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+      <a class="map-link" id="mapLink" target="_blank" rel="noopener">Apri in Google Maps ↗</a>
     </div>
   </section>
 
@@ -105,7 +105,9 @@
     <div id="modalBody"></div>
   </dialog>
 
+  <script src="config.js"></script>
   <script src="catalog.js"></script>
+  <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

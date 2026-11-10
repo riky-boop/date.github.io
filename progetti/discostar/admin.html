@@ -14,10 +14,42 @@
 <body>
   <header class="topbar">
     <a href="index.html" class="logo"><span class="logo-disc" aria-hidden="true"></span>DISCO<span>STAR</span></a>
-    <nav class="nav"><a href="index.html">← Torna al sito</a></nav>
+    <nav class="nav">
+      <span class="save-state" id="saveState"></span>
+      <a href="index.html" target="_blank">Vedi il sito ↗</a>
+      <button class="link" id="logoutBtn" hidden>Esci</button>
+    </nav>
   </header>
 
-  <main class="admin">
+  <!-- 1. Database non ancora collegato -->
+  <main class="admin narrow" id="setupView" hidden>
+    <p class="eyebrow">Configurazione</p>
+    <h1 class="admin-title">Collega il database</h1>
+    <p class="muted">Per modificare il catalogo direttamente da qui serve un database gratuito Supabase (5 minuti, una volta sola):</p>
+    <ol class="steps">
+      <li>Crea un account su <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a> e un nuovo progetto (regione: Europe).</li>
+      <li>Apri <b>SQL Editor</b>, incolla il contenuto di <code>supabase/schema.sql</code> e premi <b>Run</b>.</li>
+      <li>In <b>Authentication → Users</b> crea l'utente dell'amministratore (email + password).</li>
+      <li>Nello SQL Editor esegui: <code>insert into admins (email) values ('email-amministratore');</code></li>
+      <li>In <b>Authentication → Sign In / Providers</b> disattiva <i>Allow new users to sign up</i>.</li>
+      <li>In <b>Project Settings → API</b> copia <i>Project URL</i> e <i>anon public key</i> in <code>config.js</code> (<code>supabaseUrl</code>, <code>supabaseAnonKey</code>).</li>
+    </ol>
+  </main>
+
+  <!-- 2. Accesso -->
+  <main class="admin narrow" id="loginView" hidden>
+    <form class="login-card" id="loginForm">
+      <p class="eyebrow">Area gestione</p>
+      <h1 class="admin-title">Accedi</h1>
+      <label>Email <input type="email" name="email" class="input" autocomplete="username" required /></label>
+      <label>Password <input type="password" name="password" class="input" autocomplete="current-password" required /></label>
+      <p class="error" id="loginError" hidden></p>
+      <button class="btn accent" type="submit">Entra</button>
+    </form>
+  </main>
+
+  <!-- 3. Gestione catalogo -->
+  <main class="admin" id="appView" hidden>
     <div class="admin-head">
       <div>
         <p class="eyebrow">Area gestione</p>
@@ -25,14 +57,19 @@
         <p class="muted" id="summary"></p>
       </div>
       <div class="actions">
-        <button class="btn primary" id="addBtn">+ Nuovo articolo</button>
-        <button class="btn accent" id="downloadBtn">Scarica catalog.js</button>
+        <button class="btn accent" id="addBtn">+ Nuovo articolo</button>
       </div>
     </div>
 
-    <div class="notice" id="draftNotice" hidden>
-      <span>Hai modifiche non ancora pubblicate (salvate in questo browser).</span>
-      <button class="link" id="resetBtn">Annulla modifiche e ricarica dal file</button>
+    <div class="notice" id="notAdmin" hidden>
+      Questo account non è tra gli amministratori: puoi vedere il catalogo ma non modificarlo.
+      Aggiungi la sua email alla tabella <code>admins</code> in Supabase.
+    </div>
+
+    <div class="notice" id="emptyDb" hidden>
+      <span>Il database è vuoto.</span>
+      <button class="link" id="seedBtn">Carica il catalogo di esempio</button>
+      <span>oppure usa <b>Importa CSV</b>.</span>
     </div>
 
     <div class="toolbar">
@@ -56,7 +93,7 @@
             <th data-sort="year">Anno</th>
             <th data-sort="genre">Genere</th>
             <th data-sort="condition">Cond.</th>
-            <th data-sort="price" class="num">Prezzo</th>
+            <th data-sort="price" class="num">Prezzo €</th>
             <th data-sort="stock" class="num">Pezzi</th>
             <th>Novità</th>
             <th></th>
@@ -67,14 +104,12 @@
     </div>
 
     <details class="help">
-      <summary>Come pubblicare le modifiche</summary>
-      <ol>
-        <li>Modifica il catalogo qui: le modifiche restano salvate in questo browser.</li>
-        <li>Clicca <b>Scarica catalog.js</b>.</li>
-        <li>Sostituisci il file <code>catalog.js</code> del sito con quello scaricato (stessa cartella di <code>index.html</code>).</li>
-        <li>Dopo il caricamento il sito pubblico mostra il nuovo catalogo.</li>
-      </ol>
-      <p>CSV: colonne <code>format;artist;title;year;genre;label;price;condition;stock;isNew</code> (separatore <code>;</code> o <code>,</code>). Si apre e si modifica con Excel. L'importazione <b>sostituisce</b> l'intero catalogo.</p>
+      <summary>Come funziona</summary>
+      <ul>
+        <li>Ogni modifica viene salvata subito e appare sul sito pubblico al prossimo caricamento della pagina.</li>
+        <li>Prezzo e pezzi si modificano direttamente nella tabella; per il resto clicca <b>Modifica</b>.</li>
+        <li><b>Esporta CSV</b> → modifica in Excel → <b>Importa CSV</b>: le righe con un <code>id</code> esistente vengono aggiornate, quelle senza <code>id</code> vengono aggiunte. Nessun articolo viene eliminato dall'importazione.</li>
+      </ul>
     </details>
   </main>
 
@@ -100,6 +135,7 @@
       <datalist id="genreList"></datalist>
       <div class="form-actions">
         <button type="button" class="btn danger" id="deleteBtn">Elimina</button>
+        <button type="button" class="btn" id="duplicateBtn">Duplica</button>
         <span class="spacer"></span>
         <button type="button" class="btn" id="cancelBtn">Annulla</button>
         <button type="submit" class="btn primary">Salva</button>
@@ -109,6 +145,8 @@
 
   <div class="toast" id="toast" hidden></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
   <script src="catalog.js"></script>
   <script src="admin.js"></script>
 </body>
