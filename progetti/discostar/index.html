@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Discostar — Dischi, CD e DVD a Modena</title>
+  <meta name="description" content="Discostar, negozio di dischi a Modena. Scopri tutto il catalogo di vinili LP, CD e DVD, nuovi e usati." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="#" class="logo" aria-label="Discostar home">
+      <span class="logo-disc" aria-hidden="true"></span>
+      DISCO<span>STAR</span>
+    </a>
+    <nav class="nav">
+      <a href="#novita">Novità</a>
+      <a href="#catalogo">Catalogo</a>
+      <a href="#negozio">Il negozio</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">Negozio di dischi · Modena</p>
+      <h1>Ogni disco ha<br />una storia.<br /><em>Trova la tua.</em></h1>
+      <p class="lead">Vinili, CD e DVD — nuovi e usati. Sfoglia tutto quello che trovi sugli scaffali di Discostar, prima ancora di entrare.</p>
+      <form class="hero-search" id="heroSearch" role="search">
+        <input type="search" id="heroQuery" placeholder="Cerca artista, album, etichetta…" aria-label="Cerca nel catalogo" />
+        <button type="submit">Cerca</button>
+      </form>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="sleeve"></div>
+      <div class="vinyl"><div class="vinyl-label">DISCO<br />STAR</div></div>
+    </div>
+  </section>
+
+  <section id="novita" class="section">
+    <div class="section-head">
+      <h2>Nuovi arrivi</h2>
+      <p>Appena arrivati in negozio.</p>
+    </div>
+    <div class="rail" id="newRail"></div>
+  </section>
+
+  <section id="catalogo" class="section">
+    <div class="section-head">
+      <h2>Catalogo</h2>
+      <p id="resultCount"></p>
+    </div>
+
+    <div class="filters">
+      <div class="format-tabs" id="formatTabs" role="tablist"></div>
+      <div class="filter-row">
+        <input type="search" id="query" class="input" placeholder="Cerca…" aria-label="Cerca" />
+        <select id="genre" class="input" aria-label="Genere"></select>
+        <select id="decade" class="input" aria-label="Decennio"></select>
+        <select id="condition" class="input" aria-label="Condizione">
+          <option value="">Nuovo e usato</option>
+          <option value="Nuovo">Solo nuovo</option>
+          <option value="Usato">Solo usato</option>
+        </select>
+        <select id="sort" class="input" aria-label="Ordina">
+          <option value="artist">Artista A–Z</option>
+          <option value="title">Titolo A–Z</option>
+          <option value="year-desc">Più recenti</option>
+          <option value="year-asc">Più vecchi</option>
+          <option value="price-asc">Prezzo crescente</option>
+          <option value="price-desc">Prezzo decrescente</option>
+        </select>
+        <label class="toggle"><input type="checkbox" id="inStock" /> Solo disponibili</label>
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>
+      <p>Nessun risultato. Non trovi quello che cerchi? <a href="#negozio">Chiedi a noi</a>: possiamo ordinarlo.</p>
+    </div>
+  </section>
+
+  <section id="negozio" class="section shop">
+    <div class="shop-card">
+      <h2>Vieni a trovarci</h2>
+      <p>Il catalogo online è una vetrina: per acquistare, prenotare o chiedere un titolo che non vedi, passa in negozio o contattaci.</p>
+      <dl class="shop-info" id="shopInfo"></dl>
+    </div>
+    <div class="shop-map" aria-hidden="true">
+      <div class="pin">★</div>
+      <span>MODENA</span>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>© <span id="year"></span> Discostar · Modena</span>
+    <span>Disponibilità e prezzi indicativi, da confermare in negozio.</span>
+  </footer>
+
+  <dialog id="modal" class="modal">
+    <button class="modal-close" id="modalClose" aria-label="Chiudi">×</button>
+    <div id="modalBody"></div>
+  </dialog>
+
+  <script src="catalog.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
