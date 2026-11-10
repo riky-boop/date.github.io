@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Discostar — Gestione catalogo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="logo"><span class="logo-disc" aria-hidden="true"></span>DISCO<span>STAR</span></a>
+    <nav class="nav"><a href="index.html">← Torna al sito</a></nav>
+  </header>
+
+  <main class="admin">
+    <div class="admin-head">
+      <div>
+        <p class="eyebrow">Area gestione</p>
+        <h1 class="admin-title">Catalogo</h1>
+        <p class="muted" id="summary"></p>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="addBtn">+ Nuovo articolo</button>
+        <button class="btn accent" id="downloadBtn">Scarica catalog.js</button>
+      </div>
+    </div>
+
+    <div class="notice" id="draftNotice" hidden>
+      <span>Hai modifiche non ancora pubblicate (salvate in questo browser).</span>
+      <button class="link" id="resetBtn">Annulla modifiche e ricarica dal file</button>
+    </div>
+
+    <div class="toolbar">
+      <input type="search" id="search" class="input" placeholder="Cerca artista, titolo, etichetta…" />
+      <select id="fFormat" class="input">
+        <option value="">Tutti i formati</option><option>LP</option><option>CD</option><option>DVD</option>
+      </select>
+      <label class="toggle"><input type="checkbox" id="fOut" /> Solo esauriti</label>
+      <span class="spacer"></span>
+      <button class="btn" id="exportCsv">Esporta CSV</button>
+      <label class="btn">Importa CSV<input type="file" id="importCsv" accept=".csv,text/csv" hidden /></label>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th data-sort="format">Formato</th>
+            <th data-sort="artist">Artista</th>
+            <th data-sort="title">Titolo</th>
+            <th data-sort="year">Anno</th>
+            <th data-sort="genre">Genere</th>
+            <th data-sort="condition">Cond.</th>
+            <th data-sort="price" class="num">Prezzo</th>
+            <th data-sort="stock" class="num">Pezzi</th>
+            <th>Novità</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <details class="help">
+      <summary>Come pubblicare le modifiche</summary>
+      <ol>
+        <li>Modifica il catalogo qui: le modifiche restano salvate in questo browser.</li>
+        <li>Clicca <b>Scarica catalog.js</b>.</li>
+        <li>Sostituisci il file <code>catalog.js</code> del sito con quello scaricato (stessa cartella di <code>index.html</code>).</li>
+        <li>Dopo il caricamento il sito pubblico mostra il nuovo catalogo.</li>
+      </ol>
+      <p>CSV: colonne <code>format;artist;title;year;genre;label;price;condition;stock;isNew</code> (separatore <code>;</code> o <code>,</code>). Si apre e si modifica con Excel. L'importazione <b>sostituisce</b> l'intero catalogo.</p>
+    </details>
+  </main>
+
+  <dialog id="editor" class="modal editor">
+    <form id="form" method="dialog">
+      <h2 id="formTitle">Nuovo articolo</h2>
+      <div class="form-grid">
+        <label>Formato
+          <select name="format" class="input" required><option>LP</option><option>CD</option><option>DVD</option></select>
+        </label>
+        <label>Condizione
+          <select name="condition" class="input"><option>Nuovo</option><option>Usato</option></select>
+        </label>
+        <label class="wide">Artista <input name="artist" class="input" required /></label>
+        <label class="wide">Titolo <input name="title" class="input" required /></label>
+        <label>Anno <input name="year" type="number" min="1900" max="2100" class="input" required /></label>
+        <label>Genere <input name="genre" class="input" list="genreList" required /></label>
+        <label>Etichetta <input name="label" class="input" /></label>
+        <label>Prezzo (€) <input name="price" type="number" step="0.01" min="0" class="input" required /></label>
+        <label>Pezzi disponibili <input name="stock" type="number" min="0" class="input" required /></label>
+        <label class="toggle check"><input type="checkbox" name="isNew" /> Nuovo arrivo</label>
+      </div>
+      <datalist id="genreList"></datalist>
+      <div class="form-actions">
+        <button type="button" class="btn danger" id="deleteBtn">Elimina</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="cancelBtn">Annulla</button>
+        <button type="submit" class="btn primary">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="catalog.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
