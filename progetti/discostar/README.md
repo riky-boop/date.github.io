@@ -29,6 +29,13 @@ La *anon key* è pubblica per natura: chiunque può **leggere** il catalogo, sol
 - **Modifica** per gli altri campi, **Duplica** per un articolo simile, **Elimina**.
 - **Esporta CSV** → modifica in Excel → **Importa CSV**: le righe con `id` vengono aggiornate, quelle senza vengono aggiunte; l'importazione non elimina nulla.
 
+## Accesso all'area gestione
+- **Senza Supabase (modalità locale)**: al primo accesso `admin.html` chiede di creare una password (min. 8 caratteri). La password non viene salvata: serve a **cifrare il token Discogs** (AES-256-GCM, chiave PBKDF2-SHA256 con 310.000 iterazioni), conservato cifrato nel browser. Ad ogni apertura della scheda va reinserita; **Esci** blocca di nuovo, **Password** la cambia. Se la dimentichi, "Password dimenticata?" ne crea una nuova (il token va reinserito, il catalogo resta).
+  Dopo aver creato la password puoi **svuotare `discogs-token.js`**: il token resta cifrato nel browser.
+  Limite: senza server la schermata di blocco si può aggirare con gli strumenti del browser, ma chi lo fa non ottiene il token e può solo modificare una copia del catalogo nel proprio browser, che non viene pubblicata.
+  Serve aprire la pagina da `http://localhost` o `https://` (non come file): il browser abilita la cifratura solo lì.
+- **Con Supabase**: accesso con email e password verificato dal server; solo le email nella tabella `admins` possono modificare il catalogo. Se il token Discogs è stato cifrato con la stessa password, viene sbloccato automaticamente all'accesso.
+
 ## Copertine e tracklist da Discogs
 1. Incolla il tuo token Discogs in **`discogs-token.js`**: `window.DISCOGS_TOKEN = "il-tuo-token";`
    (se il file manca, copia `discogs-token.example.js` e rinominalo).

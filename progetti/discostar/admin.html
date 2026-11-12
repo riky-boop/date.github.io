@@ -17,6 +17,7 @@
     <nav class="nav">
       <span class="save-state" id="saveState"></span>
       <a href="index.html" target="_blank">Vedi il sito ↗</a>
+      <button class="link" id="passwordBtn" hidden>Password</button>
       <button class="link" id="logoutBtn" hidden>Esci</button>
     </nav>
   </header>
@@ -45,6 +46,38 @@
       <label>Password <input type="password" name="password" class="input" autocomplete="current-password" required /></label>
       <p class="error" id="loginError" hidden></p>
       <button class="btn accent" type="submit">Entra</button>
+    </form>
+  </main>
+
+  <!-- 2b. Modalità locale: creazione password (primo accesso) o cambio password -->
+  <main class="admin narrow" id="vaultView" hidden>
+    <form class="login-card" id="vaultForm">
+      <p class="eyebrow">Area gestione · sicurezza</p>
+      <h1 class="admin-title" id="vaultTitle">Crea la password</h1>
+      <p class="muted" id="vaultIntro">Primo accesso da questo browser. La password protegge l'area gestione e cifra il token Discogs: senza password il token non è leggibile. Non viene salvata da nessuna parte, quindi annotala.</p>
+      <label>Password (almeno 8 caratteri) <input type="password" name="password" class="input" autocomplete="new-password" minlength="8" required /></label>
+      <label>Ripeti la password <input type="password" name="confirm" class="input" autocomplete="new-password" minlength="8" required /></label>
+      <label>Token Discogs (facoltativo) <input type="password" name="token" class="input" autocomplete="off" spellcheck="false" /></label>
+      <p class="muted small" id="vaultTokenHint" hidden>Ho preso il token da <code>discogs-token.js</code>. Dopo aver salvato puoi svuotare quel file: il token resterà cifrato qui.</p>
+      <p class="error" id="vaultError" hidden></p>
+      <div class="form-actions">
+        <button type="button" class="link" id="vaultCancel" hidden>Annulla</button>
+        <span class="spacer"></span>
+        <button class="btn accent" type="submit">Salva</button>
+      </div>
+    </form>
+  </main>
+
+  <!-- 2c. Modalità locale: sblocco -->
+  <main class="admin narrow" id="lockView" hidden>
+    <form class="login-card" id="lockForm">
+      <p class="eyebrow">Area gestione</p>
+      <h1 class="admin-title">Accedi</h1>
+      <input type="text" name="username" value="discostar-admin" autocomplete="username" hidden />
+      <label>Password <input type="password" name="password" class="input" autocomplete="current-password" required /></label>
+      <p class="error" id="lockError" hidden></p>
+      <button class="btn accent" type="submit" id="lockSubmit">Entra</button>
+      <button type="button" class="link small" id="forgotBtn">Password dimenticata?</button>
     </form>
   </main>
 
@@ -179,6 +212,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
   <script src="catalog.js"></script>
+  <script src="auth.js"></script>
   <script src="localdb.js"></script>
   <script src="discogs-token.js"></script>
   <script src="discogs.js"></script>

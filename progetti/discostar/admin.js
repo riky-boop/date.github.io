@@ -13,9 +13,14 @@ let editingId = null;
 let canEdit = false;
 const view = { search: "", format: "", onlyOut: false, sort: "artist", desc: false };
 
+const isLocal = !supabaseUrl || !supabaseAnonKey;
+const FILE_TOKEN = String(window.DISCOGS_TOKEN || "").trim(); // eventuale token in chiaro in discogs-token.js
+const useToken = (t) => { window.DISCOGS_TOKEN = t || FILE_TOKEN; };
+
 function show(id) {
-  for (const v of ["setupView", "loginView", "appView"]) $("#" + v).hidden = v !== id;
+  for (const v of ["setupView", "loginView", "vaultView", "lockView", "appView"]) $("#" + v).hidden = v !== id;
   $("#logoutBtn").hidden = id !== "appView";
+  $("#passwordBtn").hidden = id !== "appView" || !isLocal;
 }
 
 function toast(text) {
@@ -56,13 +61,22 @@ function write(label, op) {
 
 /* ---------- Avvio e accesso ---------- */
 async function start() {
-  // Senza Supabase: modalità locale (catalogo nel browser, pubblicazione scaricando catalog.js).
-  if (!supabaseUrl || !supabaseAnonKey) {
+  // Senza Supabase: modalità locale (catalogo nel browser, pubblicazione scaricando catalog.js),
+  // protetta da una password che cifra il token Discogs.
+  if (isLocal) {
     db = createLocalClient();
     $("#localMode").hidden = false;
-    await enterApp();
-    $("#logoutBtn").hidden = true;
-    return;
+    if (!Vault.supported()) {
+      show("lockView");
+      $("#lockError").textContent = "Apri l'area gestione da http://localhost:8000 o da un indirizzo https: aperta come file il browser non permette la cifratura.";
+      $("#lockError").hidden = false;
+      $("#lockSubmit").disabled = true;
+      return;
+    }
+    if (!Vault.exists()) return openVault("create");
+    const s = Vault.session();
+    if (s) { useToken(s.token); return enterApp(); }
+    return show("lockView");
   }
   if (!window.supabase) {
     toast("Impossibile caricare Supabase: controlla la connessione");
@@ -70,10 +84,14 @@ async function start() {
   }
   db = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
   const { data } = await db.auth.getSession();
-  if (data.session) enterApp();
-  else show("loginView");
+  if (data.session) {
+    const s = Vault.supported() && Vault.session();
+    if (s) useToken(s.token);
+    enterApp();
+  } else show("loginView");
 }
 
+/* Accesso con Supabase (sicurezza lato server). */
 $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target.elements;
@@ -84,14 +102,83 @@ $("#loginForm").addEventListener("submit", async (e) => {
     $("#loginError").hidden = false;
     return;
   }
+  // Se il token Discogs è cifrato con la stessa password, sbloccalo subito.
+  if (Vault.supported() && Vault.exists()) {
+    try { useToken(await Vault.unlock(f.password.value)); } catch {}
+  }
   f.password.value = "";
   enterApp();
 });
 
+/* Modalità locale: sblocco con password. */
+$("#lockForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pw = e.target.elements.password;
+  $("#lockError").hidden = true;
+  $("#lockSubmit").disabled = true;
+  $("#lockSubmit").textContent = "Verifica…";
+  try {
+    useToken(await Vault.unlock(pw.value));
+    pw.value = "";
+    await enterApp();
+  } catch (err) {
+    $("#lockError").textContent = err.message;
+    $("#lockError").hidden = false;
+    pw.select();
+  } finally {
+    $("#lockSubmit").disabled = false;
+    $("#lockSubmit").textContent = "Entra";
+  }
+});
+
+$("#forgotBtn").addEventListener("click", () => {
+  if (!confirm("La password non si può recuperare. Puoi crearne una nuova, ma dovrai reinserire il token Discogs.\nIl catalogo salvato in questo browser non viene toccato. Continuare?")) return;
+  Vault.reset();
+  openVault("create");
+});
+
+/* Creazione (primo accesso) o cambio password. */
+let vaultMode = "create";
+function openVault(mode) {
+  vaultMode = mode;
+  const change = mode === "change";
+  const f = $("#vaultForm");
+  f.reset();
+  $("#vaultTitle").textContent = change ? "Cambia password" : "Crea la password";
+  if (change) $("#vaultIntro").textContent = "Imposta una nuova password e, se serve, aggiorna il token Discogs.";
+  f.elements.token.value = change ? String(window.DISCOGS_TOKEN || "") : FILE_TOKEN;
+  $("#vaultTokenHint").hidden = change || !FILE_TOKEN;
+  $("#vaultCancel").hidden = !change;
+  $("#vaultError").hidden = true;
+  show("vaultView");
+  f.elements.password.focus();
+}
+
+$("#vaultForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target.elements;
+  const fail = (msg) => { $("#vaultError").textContent = msg; $("#vaultError").hidden = false; };
+  if (f.password.value.length < 8) return fail("La password deve avere almeno 8 caratteri.");
+  if (f.password.value !== f.confirm.value) return fail("Le due password non coincidono.");
+  const token = f.token.value.trim();
+  await Vault.create(f.password.value, token);
+  useToken(token);
+  f.password.value = f.confirm.value = f.token.value = "";
+  toast(vaultMode === "change" ? "Password aggiornata" : "Password creata: l'area gestione è protetta");
+  await enterApp();
+});
+
+$("#vaultCancel").addEventListener("click", () => show("appView"));
+$("#passwordBtn").addEventListener("click", () => openVault("change"));
+
 $("#logoutBtn").addEventListener("click", async () => {
-  await db.auth.signOut();
+  if (Vault.supported()) Vault.lock();
+  window.DISCOGS_TOKEN = FILE_TOKEN;
   items = [];
+  $("#rows").innerHTML = "";
   saveState("");
+  if (isLocal) return show("lockView");
+  await db.auth.signOut();
   show("loginView");
 });
 
