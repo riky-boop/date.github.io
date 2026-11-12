@@ -56,7 +56,18 @@ function write(label, op) {
 
 /* ---------- Avvio e accesso ---------- */
 async function start() {
-  if (!supabaseUrl || !supabaseAnonKey || !window.supabase) return show("setupView");
+  // Senza Supabase: modalità locale (catalogo nel browser, pubblicazione scaricando catalog.js).
+  if (!supabaseUrl || !supabaseAnonKey) {
+    db = createLocalClient();
+    $("#localMode").hidden = false;
+    await enterApp();
+    $("#logoutBtn").hidden = true;
+    return;
+  }
+  if (!window.supabase) {
+    toast("Impossibile caricare Supabase: controlla la connessione");
+    return show("setupView");
+  }
   db = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
   const { data } = await db.auth.getSession();
   if (data.session) enterApp();
@@ -297,6 +308,38 @@ $("#seedBtn").addEventListener("click", async () => {
   } catch {}
 });
 
+/* ---------- Modalità locale: pubblicazione con catalog.js ---------- */
+function catalogJS() {
+  const keep = ["id", ...FIELDS, "discogs_id", "discogs_type", "cover_url", "thumb_url", "tracklist"];
+  const lines = [...items]
+    .sort((a, b) => a.id - b.id)
+    .map((i) => "  " + JSON.stringify(Object.fromEntries(keep
+      .filter((k) => i[k] !== undefined && i[k] !== null && i[k] !== "" && !(Array.isArray(i[k]) && !i[k].length))
+      .map((k) => [k, i[k]]))));
+  return `/*
+  CATALOGO DISCOSTAR
+  Generato dall'area gestione il ${new Date().toLocaleString("it-IT")}.
+  Per aggiornarlo usa admin.html e sostituisci questo file con quello scaricato.
+*/
+window.CATALOG = [
+${lines.join(",\n")}
+];
+`;
+}
+
+$("#downloadJsBtn").addEventListener("click", () => {
+  download("catalog.js", catalogJS(), "text/javascript");
+  toast("catalog.js scaricato: sostituiscilo nella cartella del sito");
+});
+
+$("#resetLocalBtn").addEventListener("click", async () => {
+  if (!confirm("Annullare tutte le modifiche fatte in questo browser e ricaricare il catalogo da catalog.js?")) return;
+  db.reset();
+  items = await fetchAll();
+  render();
+  toast("Catalogo ricaricato da catalog.js");
+});
+
 /* ---------- CSV ---------- */
 function download(name, content, type) {
   const a = document.createElement("a");
@@ -428,7 +471,11 @@ async function dgSearch() {
     ? `<p class="muted">Scegli l'edizione giusta:</p>` + dgCandidates.map((c, n) => `
         <button type="button" class="dg-result${Discogs.matches(query, c) ? " sure" : ""}" data-pick="${n}">
           ${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy" />` : `<span class="nothumb">♪</span>`}
-          <span><b>${esc(c.title)}</b><small>${[c.type === "master" ? "Album originale" : "Edizione", c.year, c.country, c.format].filter(Boolean).map(esc).join(" · ")}</small></span>
+          <span><b>${esc(c.title)}</b><small>${[
+            c.unofficial ? "⚠ Non ufficiale" : c.short ? "Singolo / EP" : c.type === "master" ? "Album originale" : "Edizione",
+            c.year, c.country, c.format,
+            c.have ? `${c.have.toLocaleString("it-IT")} collezionisti` : "",
+          ].filter(Boolean).map(esc).join(" · ")}</small></span>
         </button>`).join("")
     : `<p class="muted">Nessun risultato. Prova a correggere artista/titolo o a inserire il barcode.</p>`;
 }

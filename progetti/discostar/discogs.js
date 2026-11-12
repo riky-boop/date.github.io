@@ -36,18 +36,33 @@ const Discogs = (() => {
     return run;
   }
 
-  const candidate = (r) => ({
-    id: r.id,
-    type: r.type,
-    title: r.title || "",
-    year: r.year || "",
-    country: r.country || "",
-    format: (r.format || []).filter((f, i, a) => a.indexOf(f) === i).slice(0, 3).join(", "),
-    thumb: r.thumb || "",
-    cover: r.cover_image || "",
-  });
+  const candidate = (r) => {
+    const formats = (r.format || []).filter((f, i, a) => a.indexOf(f) === i);
+    return {
+      id: r.id,
+      type: r.type,
+      title: r.title || "",
+      year: r.year || "",
+      country: r.country || "",
+      format: formats.filter((f) => f !== "Unofficial Release").slice(0, 3).join(", "),
+      unofficial: formats.includes("Unofficial Release"), // bootleg
+      // 45 giri / singolo / EP: stesso titolo dell'album ma non è l'album
+      short: formats.some((f) => ["Single", "Maxi-Single", "EP", '7"'].includes(f)) && !formats.some((f) => f === "LP" || f === "Album"),
+      have: (r.community && r.community.have) || 0,       // quanti collezionisti lo possiedono
+      thumb: r.thumb || "",
+      cover: r.cover_image || "",
+    };
+  };
 
-  /* Barcode: ricerca esatta. LP/CD: prima la "master" (l'album originale), poi le edizioni. DVD: edizioni DVD. */
+  /* Discogs ordina per pertinenza, non per importanza: un 45 giri promo può precedere l'album.
+     Mettiamo prima le uscite ufficiali, poi gli album (non singoli) per LP/CD, poi le più diffuse tra i collezionisti. */
+  const rank = (list, item) => {
+    const album = item.format !== "DVD";
+    return [...list].sort((a, b) => (a.unofficial - b.unofficial) || (album ? a.short - b.short : 0) || (b.have - a.have));
+  };
+
+  /* Barcode: ricerca esatta. LP/CD: prima la "master" (l'album originale), poi le edizioni. DVD: edizioni DVD.
+     Se un tentativo non dà un abbinamento sicuro si prova il successivo, unendo i risultati. */
   async function search(item) {
     const by = { artist: item.artist, release_title: item.title };
     const attempts = item.barcode
@@ -55,11 +70,16 @@ const Discogs = (() => {
       : item.format === "DVD"
         ? [{ type: "release", ...by, format: "DVD" }, { type: "master", ...by }]
         : [{ type: "master", ...by }, { type: "release", ...by, format: FORMAT[item.format] }];
+    const found = [];
     for (const params of attempts) {
-      const data = await get("/database/search", { ...params, per_page: 8 });
-      if (data && data.results && data.results.length) return data.results.map(candidate);
+      const data = await get("/database/search", { ...params, per_page: 10 });
+      for (const r of (data && data.results) || []) {
+        if (!found.some((f) => f.id === r.id && f.type === r.type)) found.push(candidate(r));
+      }
+      if (params.barcode && found.length) break; // il barcode identifica già l'edizione
+      if (found.some((c) => matches(item, c))) break;
     }
-    return [];
+    return rank(found, item);
   }
 
   async function details(c) {
@@ -72,7 +92,9 @@ const Discogs = (() => {
       discogs_type: c.type,
       cover_url: img ? img.uri : c.cover || null,
       thumb_url: img ? img.uri150 : c.thumb || null,
-      tracklist: (d.tracklist || [])
+      // "index" = brano diviso in parti (sub_tracks): titolo come intestazione, poi le parti
+      tracklist: (d.tracklist || []).flatMap((t) =>
+        t.type_ === "index" && (t.sub_tracks || []).length ? [{ ...t, type_: "heading" }, ...t.sub_tracks] : [t])
         .filter((t) => t.title)
         .map((t) => ({ position: t.position || "", title: t.title, duration: t.duration || "", heading: t.type_ === "heading" })),
     };
@@ -85,6 +107,8 @@ const Discogs = (() => {
 
   /* Abbinamento sicuro: stesso titolo e stesso artista (il risultato è "Artista - Titolo"). */
   function matches(item, c) {
+    if (c.unofficial) return false;
+    if (c.short && item.format !== "DVD") return false;
     const cut = c.title.indexOf(" - ");
     if (cut < 0) return false;
     const artist = simplify(c.title.slice(0, cut)), title = simplify(c.title.slice(cut + 3));

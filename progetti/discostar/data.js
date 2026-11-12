@@ -1,7 +1,14 @@
 /* Carica il catalogo: da Supabase se configurato, altrimenti dai dati di esempio in catalog.js. */
 window.loadCatalog = async function () {
   const { supabaseUrl, supabaseAnonKey } = window.DISCOSTAR;
-  if (!supabaseUrl || !supabaseAnonKey) return window.CATALOG || [];
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Anteprima: se in questo browser c'è una bozza dell'area gestione (modalità locale), mostrala.
+    try {
+      const draft = JSON.parse(localStorage.getItem("discostar-local-catalog"));
+      if (Array.isArray(draft)) { window.CATALOG_SOURCE = "draft"; return draft; }
+    } catch {}
+    return window.CATALOG || [];
+  }
 
   const PAGE = 1000; // limite di righe per richiesta di Supabase
   const all = [];

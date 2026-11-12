@@ -241,6 +241,10 @@ async function init() {
   setupMap();
   setupModal();
   items = await window.loadCatalog();
+  if (window.CATALOG_SOURCE === "draft") {
+    document.body.insertAdjacentHTML("afterbegin",
+      `<div class="draft-bar">Anteprima della bozza dell'area gestione (solo in questo browser). Il sito pubblico mostra catalog.js finché non lo sostituisci.</div>`);
+  }
   setupStatic();
   setupFilters();
   render();
