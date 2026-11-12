@@ -1,9 +1,10 @@
 /* Gestione catalogo: ogni modifica viene salvata subito su Supabase. */
-const FIELDS = ["format", "artist", "title", "year", "genre", "label", "price", "stock", "isNew"];
+const FIELDS = ["format", "barcode", "artist", "title", "year", "genre", "label", "price", "stock", "isNew"];
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const round2 = (n) => Math.round(n * 100) / 100;
+const DG_EMPTY = { discogs_id: null, discogs_type: null, cover_url: null, thumb_url: null, tracklist: [] };
 
 const { supabaseUrl, supabaseAnonKey } = window.DISCOSTAR;
 let db = null;
@@ -85,15 +86,18 @@ $("#logoutBtn").addEventListener("click", async () => {
 
 async function enterApp() {
   show("appView");
-  $("#rows").innerHTML = `<tr><td colspan="9" class="muted">Caricamento…</td></tr>`;
+  $("#rows").innerHTML = `<tr><td colspan="10" class="muted">Caricamento…</td></tr>`;
   const { data: isAdmin } = await db.rpc("is_admin");
   canEdit = !!isAdmin;
   $("#notAdmin").hidden = canEdit;
   $("#appView").classList.toggle("readonly", !canEdit);
+  $("#dgNoToken").hidden = Discogs.enabled() || !canEdit;
+  $("#dgFillBtn").hidden = !canEdit;
+  $("#dgFillBtn").disabled = !Discogs.enabled();
   try {
     items = await fetchAll();
   } catch (err) {
-    $("#rows").innerHTML = `<tr><td colspan="9" class="error">Impossibile caricare il catalogo: ${esc(err.message)}</td></tr>`;
+    $("#rows").innerHTML = `<tr><td colspan="10" class="error">Impossibile caricare il catalogo: ${esc(err.message)}</td></tr>`;
     return;
   }
   render();
@@ -109,7 +113,7 @@ async function fetchAll() {
   }
 }
 
-const clean = (i) => ({ ...i, price: +i.price, year: +i.year || 0, stock: +i.stock || 0 });
+const clean = (i) => ({ ...i, price: +i.price, year: +i.year || 0, stock: +i.stock || 0, barcode: i.barcode || "", tracklist: i.tracklist || [] });
 const pick = (o) => Object.fromEntries(FIELDS.map((f) => [f, o[f]]));
 
 /* ---------- Tabella ---------- */
@@ -131,6 +135,9 @@ function render() {
   const list = visible();
   $("#rows").innerHTML = list.map((i) => `
     <tr data-id="${i.id}" class="${i.stock === 0 ? "out" : ""}">
+      <td class="thumb">${i.thumb_url
+        ? `<img src="${esc(i.thumb_url)}" alt="" loading="lazy" />`
+        : `<span class="nothumb" title="Nessun dato Discogs">♪</span>`}</td>
       <td><span class="fmt-pill">${i.format}</span></td>
       <td>${esc(i.artist)}</td>
       <td class="title">${esc(i.title)}</td>
@@ -144,7 +151,7 @@ function render() {
       </span></td>
       <td><input type="checkbox" data-act="new" ${i.isNew ? "checked" : ""} aria-label="Nuovo arrivo" /></td>
       <td><button class="btn small" data-act="edit">Modifica</button></td>
-    </tr>`).join("") || `<tr><td colspan="9" class="muted">Nessun articolo trovato.</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="10" class="muted">Nessun articolo trovato.</td></tr>`;
 
   const count = (f) => items.filter((i) => i.format === f).length;
   const out = items.filter((i) => i.stock === 0).length;
@@ -159,7 +166,7 @@ function render() {
 
 /* Modifica di un campo con aggiornamento immediato e ripristino in caso di errore. */
 function patch(item, changes) {
-  const before = pick(item);
+  const before = Object.fromEntries(Object.keys(changes).map((k) => [k, item[k]]));
   Object.assign(item, changes);
   render();
   return write(`${item.title}`, () => db.from("items").update(changes).eq("id", item.id))
@@ -210,6 +217,9 @@ function openEditor(item, prefill) {
   $("#formTitle").textContent = item ? "Modifica articolo" : "Nuovo articolo";
   $("#deleteBtn").hidden = $("#duplicateBtn").hidden = !item || !canEdit;
   const data = item || prefill || { format: "LP", year: new Date().getFullYear(), stock: 1, isNew: true };
+  dgPending = undefined;
+  $("#dgResults").innerHTML = "";
+  renderDgCurrent(item || DG_EMPTY);
   for (const f of FIELDS) {
     const input = form.elements[f];
     if (input.type === "checkbox") input.checked = !!data[f];
@@ -223,6 +233,7 @@ function formData() {
   const el = form.elements;
   return {
     format: el.format.value,
+    barcode: el.barcode.value.replace(/\s/g, ""),
     artist: el.artist.value.trim(),
     title: el.title.value.trim(),
     year: +el.year.value,
@@ -235,7 +246,7 @@ function formData() {
 }
 
 form.addEventListener("submit", async () => {
-  const data = formData();
+  const data = { ...formData(), ...(dgPending || {}) };
   if (editingId) {
     await patch(items.find((i) => i.id === editingId), data);
     return toast("Articolo aggiornato");
@@ -341,6 +352,7 @@ function rowsToItems(rows) {
       title: o.title,
       year: parseInt(o.year) || null,
       genre: o.genre || "Altro",
+      barcode: (o.barcode || "").replace(/\s/g, ""),
       label: o.label || "",
       price: round2(parseFloat(String(o.price).replace(/[€\s]/g, "").replace(",", ".")) || 0),
       stock: Math.max(0, parseInt(o.stock) || 0),
@@ -383,5 +395,128 @@ $("#importCsv").addEventListener("change", async (e) => {
     render();
   }
 });
+
+/* ---------- Discogs: copertina e tracklist ---------- */
+let dgPending;      // dati Discogs scelti nell'editor, salvati con "Salva"
+let dgCandidates = [];
+let dgRunning = false, dgStop = false;
+let dgReview = [];
+
+function renderDgCurrent(src) {
+  const linked = !!src.discogs_id;
+  const tracks = (src.tracklist || []).filter((t) => !t.heading).length;
+  $("#dgCurrent").innerHTML = linked
+    ? `${src.thumb_url ? `<img src="${esc(src.thumb_url)}" alt="" />` : ""}
+       <div><b>${tracks} brani</b>${src.cover_url ? " · copertina" : ""}${dgPending ? ` · <em>da salvare</em>` : ""}<br />
+       <a href="${Discogs.pageUrl(src)}" target="_blank" rel="noopener">Vedi su Discogs ↗</a></div>`
+    : `<span class="muted">${Discogs.enabled() ? "Nessun disco Discogs collegato." : "Discogs non collegato: inserisci il token in discogs-token.js."}</span>`;
+  $("#dgClearBtn").hidden = !linked || !canEdit;
+  $("#dgSearchBtn").disabled = !Discogs.enabled() || !canEdit;
+}
+
+async function dgSearch() {
+  const query = formData();
+  if (!query.artist || !query.title) return toast("Inserisci prima artista e titolo");
+  $("#dgResults").innerHTML = `<p class="muted">Cerco su Discogs…</p>`;
+  try {
+    dgCandidates = await Discogs.search(query);
+  } catch (err) {
+    $("#dgResults").innerHTML = `<p class="error">${esc(err.message)}</p>`;
+    return;
+  }
+  $("#dgResults").innerHTML = dgCandidates.length
+    ? `<p class="muted">Scegli l'edizione giusta:</p>` + dgCandidates.map((c, n) => `
+        <button type="button" class="dg-result${Discogs.matches(query, c) ? " sure" : ""}" data-pick="${n}">
+          ${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy" />` : `<span class="nothumb">♪</span>`}
+          <span><b>${esc(c.title)}</b><small>${[c.type === "master" ? "Album originale" : "Edizione", c.year, c.country, c.format].filter(Boolean).map(esc).join(" · ")}</small></span>
+        </button>`).join("")
+    : `<p class="muted">Nessun risultato. Prova a correggere artista/titolo o a inserire il barcode.</p>`;
+}
+
+$("#dgSearchBtn").addEventListener("click", dgSearch);
+
+$("#dgResults").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-pick]");
+  if (!btn) return;
+  $("#dgResults").innerHTML = `<p class="muted">Scarico tracklist e copertina…</p>`;
+  try {
+    dgPending = await Discogs.details(dgCandidates[+btn.dataset.pick]);
+    $("#dgResults").innerHTML = "";
+    renderDgCurrent(dgPending);
+  } catch (err) {
+    $("#dgResults").innerHTML = `<p class="error">${esc(err.message)}</p>`;
+  }
+});
+
+$("#dgClearBtn").addEventListener("click", () => {
+  dgPending = { ...DG_EMPTY };
+  renderDgCurrent(DG_EMPTY);
+  $("#dgCurrent").insertAdjacentHTML("beforeend", ` <em class="muted">(rimozione da salvare)</em>`);
+});
+
+/* Completa tutti gli articoli senza dati Discogs. */
+function dgProgress(done, total, matched) {
+  $("#dgProgressText").textContent = dgRunning
+    ? `Discogs: ${done} di ${total} · ${matched} abbinati automaticamente`
+    : `Discogs completato: ${matched} abbinati automaticamente su ${done}`;
+  $("#dgBar").style.width = `${total ? Math.round((done / total) * 100) : 100}%`;
+  $("#dgStopBtn").textContent = dgRunning ? "Interrompi" : "Chiudi";
+}
+
+function renderReview() {
+  dgReview = dgReview.filter((i) => !i.discogs_id && items.includes(i));
+  $("#dgReview").innerHTML = dgReview.length
+    ? `<p><b>${dgReview.length} da verificare</b>: artista o titolo non coincidono esattamente con Discogs, scegli tu l'edizione.</p>
+       <ul>${dgReview.map((i) => `
+         <li><span class="fmt-pill">${i.format}</span> ${esc(i.artist)} — ${esc(i.title)}
+         <button class="link" data-review="${i.id}">Scegli</button></li>`).join("")}</ul>`
+    : "";
+}
+
+$("#dgReview").addEventListener("click", (e) => {
+  const id = e.target.dataset.review;
+  if (!id) return;
+  openEditor(items.find((i) => i.id === +id));
+  dgSearch();
+});
+
+$("#dgStopBtn").addEventListener("click", () => {
+  if (dgRunning) dgStop = true;
+  else $("#dgPanel").hidden = true;
+});
+
+async function fillFromDiscogs() {
+  if (dgRunning) return;
+  const todo = items.filter((i) => !i.discogs_id);
+  if (!todo.length) return toast("Tutti gli articoli hanno già i dati Discogs");
+  const minutes = Math.max(1, Math.ceil((todo.length * 2 * 1.1) / 60));
+  if (!confirm(`Cercare su Discogs ${todo.length} articoli?\nTempo stimato: circa ${minutes} min. Intanto puoi continuare a lavorare, ma tieni aperta la pagina.`)) return;
+  dgRunning = true; dgStop = false; dgReview = [];
+  $("#dgPanel").hidden = false;
+  $("#dgFillBtn").disabled = true;
+  renderReview();
+  let done = 0, matched = 0;
+  for (const item of todo) {
+    if (dgStop) break;
+    dgProgress(done, todo.length, matched);
+    try {
+      const best = (await Discogs.search(item)).find((c) => Discogs.matches(item, c));
+      if (best) {
+        await patch(item, await Discogs.details(best));
+        if (item.discogs_id) matched++;
+      } else dgReview.push(item);
+    } catch (err) {
+      if (/token/i.test(err.message)) { toast(err.message); break; }
+      dgReview.push(item);
+    }
+    done++;
+  }
+  dgRunning = false;
+  $("#dgFillBtn").disabled = false;
+  dgProgress(done, todo.length, matched);
+  renderReview();
+}
+
+$("#dgFillBtn").addEventListener("click", fillFromDiscogs);
 
 start();

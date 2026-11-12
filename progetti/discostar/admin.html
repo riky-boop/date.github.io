@@ -57,6 +57,7 @@
         <p class="muted" id="summary"></p>
       </div>
       <div class="actions">
+        <button class="btn" id="dgFillBtn" title="Cerca copertina e tracklist per gli articoli che non le hanno">Completa da Discogs</button>
         <button class="btn accent" id="addBtn">+ Nuovo articolo</button>
       </div>
     </div>
@@ -70,6 +71,19 @@
       <span>Il database è vuoto.</span>
       <button class="link" id="seedBtn">Carica il catalogo di esempio</button>
       <span>oppure usa <b>Importa CSV</b>.</span>
+    </div>
+
+    <div class="notice" id="dgNoToken" hidden>
+      Discogs non è collegato: incolla il tuo token nel file <code>discogs-token.js</code> e ricarica la pagina.
+    </div>
+
+    <div class="dg-panel" id="dgPanel" hidden>
+      <div class="dg-progress-row">
+        <span id="dgProgressText"></span>
+        <button class="link" id="dgStopBtn">Interrompi</button>
+      </div>
+      <div class="dg-bar"><div id="dgBar"></div></div>
+      <div id="dgReview"></div>
     </div>
 
     <div class="toolbar">
@@ -87,6 +101,7 @@
       <table class="table">
         <thead>
           <tr>
+            <th aria-label="Copertina"></th>
             <th data-sort="format">Formato</th>
             <th data-sort="artist">Artista</th>
             <th data-sort="title">Titolo</th>
@@ -107,6 +122,7 @@
       <ul>
         <li>Ogni modifica viene salvata subito e appare sul sito pubblico al prossimo caricamento della pagina.</li>
         <li>Prezzo e pezzi si modificano direttamente nella tabella; per il resto clicca <b>Modifica</b>.</li>
+        <li><b>Discogs</b>: in <b>Modifica</b> premi <b>Cerca su Discogs</b> e scegli l'edizione giusta (con il barcode la ricerca è esatta). <b>Completa da Discogs</b> fa lo stesso per tutti gli articoli senza copertina: abbina da solo quando artista e titolo coincidono, il resto te lo propone da scegliere.</li>
         <li><b>Esporta CSV</b> → modifica in Excel → <b>Importa CSV</b>: le righe con un <code>id</code> esistente vengono aggiornate, quelle senza <code>id</code> vengono aggiunte. Nessun articolo viene eliminato dall'importazione.</li>
       </ul>
     </details>
@@ -116,9 +132,10 @@
     <form id="form" method="dialog">
       <h2 id="formTitle">Nuovo articolo</h2>
       <div class="form-grid">
-        <label class="wide">Formato
+        <label>Formato
           <select name="format" class="input" required><option>LP</option><option>CD</option><option>DVD</option></select>
         </label>
+        <label>Barcode (EAN) <input name="barcode" class="input" inputmode="numeric" placeholder="facoltativo" /></label>
         <label class="wide">Artista <input name="artist" class="input" required /></label>
         <label class="wide">Titolo <input name="title" class="input" required /></label>
         <label>Anno <input name="year" type="number" min="1900" max="2100" class="input" required /></label>
@@ -129,6 +146,16 @@
         <label class="toggle check"><input type="checkbox" name="isNew" /> Nuovo arrivo</label>
       </div>
       <datalist id="genreList"></datalist>
+      <section class="dg-box">
+        <div class="dg-head">
+          <b>Discogs</b>
+          <span class="spacer"></span>
+          <button type="button" class="link" id="dgClearBtn" hidden>Rimuovi</button>
+          <button type="button" class="btn small" id="dgSearchBtn">Cerca su Discogs</button>
+        </div>
+        <div id="dgCurrent" class="dg-current"></div>
+        <div id="dgResults" class="dg-results"></div>
+      </section>
       <div class="form-actions">
         <button type="button" class="btn danger" id="deleteBtn">Elimina</button>
         <button type="button" class="btn" id="duplicateBtn">Duplica</button>
@@ -144,6 +171,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
   <script src="catalog.js"></script>
+  <script src="discogs-token.js"></script>
+  <script src="discogs.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>

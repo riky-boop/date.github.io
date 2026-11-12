@@ -17,6 +17,14 @@ create table if not exists public.items (
 -- Il negozio vende solo articoli nuovi: rimuove la colonna se creata da una versione precedente.
 alter table public.items drop column if exists condition;
 
+-- Dati da Discogs: copertina originale e tracklist (compilati dall'area gestione).
+alter table public.items add column if not exists barcode      text not null default '';
+alter table public.items add column if not exists discogs_id   bigint;
+alter table public.items add column if not exists discogs_type text check (discogs_type in ('master', 'release'));
+alter table public.items add column if not exists cover_url    text;
+alter table public.items add column if not exists thumb_url    text;
+alter table public.items add column if not exists tracklist    jsonb not null default '[]'::jsonb;
+
 -- Chi può modificare il catalogo: aggiungi qui le email degli amministratori.
 create table if not exists public.admins (
   email text primary key

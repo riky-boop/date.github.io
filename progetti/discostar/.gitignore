@@ -1,0 +1,4 @@
+discogs-token.js
+*.swp
+*.swo
+.DS_Store

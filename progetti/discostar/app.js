@@ -38,6 +38,16 @@ function availability(stock) {
   return `<span class="avail">Disponibile</span>`;
 }
 
+/* Copertina originale da Discogs, se presente; se non carica resta quella generata. */
+const httpsUrl = (u) => (/^https:\/\//.test(u || "") ? u : "");
+function artHTML(item) {
+  const url = httpsUrl(item.cover_url);
+  return `
+    <div class="cover-glyph">${esc(item.artist.replace(/^the /i, "")[0])}</div>
+    <div class="cover-text"><b>${esc(item.title)}</b><span>${esc(item.artist)}</span></div>
+    ${url ? `<img class="cover-img" src="${esc(url)}" alt="Copertina di ${esc(item.title)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" />` : ""}`;
+}
+
 function coverHTML(item) {
   const c = coverStyle(item);
   const badges = [
@@ -46,10 +56,7 @@ function coverHTML(item) {
   return `
     <div class="cover-wrap">
       ${item.format === "LP" ? `<div class="disc" style="--disc-label:${c.label}"></div>` : ""}
-      <div class="cover" style="background:${c.bg}">
-        <div class="cover-glyph">${esc(item.artist.replace(/^the /i, "")[0])}</div>
-        <div class="cover-text"><b>${esc(item.title)}</b><span>${esc(item.artist)}</span></div>
-      </div>
+      <div class="cover" style="background:${c.bg}">${artHTML(item)}</div>
       <div class="badges"><span class="badge">${item.format}</span>${badges}</div>
     </div>`;
 }
@@ -134,6 +141,31 @@ const DETAIL = {
   DVD: { kicker: "DVD Video", specs: ["DVD Video", "Live & film musicali", "Custodia DVD"], disc: "DVD", cta: "Prenota il DVD" },
 };
 
+/* Tracklist da Discogs: i vinili divisi per lato (A1, A2… → Lato A). */
+function tracklistHTML(it) {
+  const list = Array.isArray(it.tracklist) ? it.tracklist : [];
+  const count = list.filter((t) => !t.heading).length;
+  if (!count) return "";
+  let side = null, rows = "";
+  for (const t of list) {
+    if (t.heading) { rows += `<li class="tl-head">${esc(t.title)}</li>`; continue; }
+    const letter = it.format === "LP" ? (String(t.position).match(/^[A-Z]/i) || [""])[0].toUpperCase() : "";
+    if (letter && letter !== side) { side = letter; rows += `<li class="tl-head">Lato ${letter}</li>`; }
+    rows += `<li><span class="tl-pos">${esc(t.position)}</span><span class="tl-title">${esc(t.title)}</span><span class="tl-dur">${esc(t.duration)}</span></li>`;
+  }
+  return `
+    <details class="tracklist" open>
+      <summary>${it.format === "DVD" ? "Scaletta" : "Tracklist"} <small>${count} ${count === 1 ? "brano" : "brani"}</small></summary>
+      <ol>${rows}</ol>
+    </details>`;
+}
+
+function discogsCredit(it) {
+  if (!it.discogs_id) return "";
+  const type = it.discogs_type === "master" ? "master" : "release";
+  return `<a class="dg-credit" href="https://www.discogs.com/${type}/${+it.discogs_id}" target="_blank" rel="noopener">Tracklist e copertina: Discogs ↗</a>`;
+}
+
 function openDetail(id) {
   const it = items.find((i) => i.id === id);
   if (!it) return;
@@ -147,10 +179,7 @@ function openDetail(id) {
         ${it.format === "DVD" ? `<div class="screen" style="--cover:${c.bg}"><span class="play" aria-hidden="true">▶</span></div>` : ""}
         <div class="detail-object">
           <div class="detail-disc"><div class="disc-spin" style="--disc-label:${c.label}"><span>${d.disc}</span></div></div>
-          <div class="detail-cover" style="background:${c.bg}">
-            <div class="cover-glyph">${esc(it.artist.replace(/^the /i, "")[0])}</div>
-            <div class="cover-text"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div>
-          </div>
+          <div class="detail-cover" style="background:${c.bg}">${artHTML(it)}</div>
         </div>
       </div>
       <div class="detail-info">
@@ -163,6 +192,7 @@ function openDetail(id) {
           <dt>Genere</dt><dd>${esc(it.genre)}</dd>
           <dt>Etichetta</dt><dd>${esc(it.label)}</dd>
         </dl>
+        ${tracklistHTML(it)}
         <div class="buy">
           <span class="detail-price">${euro(it.price)}</span>
           ${availability(it.stock)}
@@ -170,6 +200,7 @@ function openDetail(id) {
         <a class="cta" target="_blank" rel="noopener" href="https://wa.me/${SHOP.whatsapp}?text=${msg}">
           ${it.stock > 0 ? d.cta : "Avvisami quando torna"}
         </a>
+        ${discogsCredit(it)}
       </div>
     </article>`;
   $("#modal").showModal();
@@ -189,6 +220,9 @@ function setupStatic() {
     .map(([f, label]) => `<div class="stat"><b>${items.filter((i) => i.format === f).length}</b><span>${label}</span></div>`)
     .join("");
   $("#newRail").innerHTML = items.filter((i) => i.isNew).map(cardHTML).join("");
+  if (items.some((i) => i.discogs_id)) {
+    $("#credits").innerHTML = `Copertine e tracklist: <a href="https://www.discogs.com" target="_blank" rel="noopener">Discogs</a> · `;
+  }
   $("#shopInfo").innerHTML = `
     <dt>Indirizzo</dt><dd>${esc(SHOP.address)}</dd>
     <dt>Orari</dt><dd>${esc(SHOP.hours)}</dd>

@@ -420,6 +420,32 @@ h2 { font-family: var(--display); font-size: clamp(1.8rem, 3.4vw, 2.6rem); lette
   .detail[data-format="DVD"] .detail-info { padding: 100px 22px 28px; }
 }
 
+/* ---------- Copertine originali e tracklist (Discogs) ---------- */
+.cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; }
+.card[data-format="CD"] .cover::before, .card[data-format="CD"] .cover::after,
+.detail[data-format="CD"] .detail-cover::before, .detail[data-format="CD"] .detail-cover::after { z-index: 3; }
+.detail[data-format="DVD"] .detail-cover::before { z-index: 3; }
+.detail[data-format="DVD"] .detail-cover .cover-img { top: 18px; height: calc(100% - 18px); }
+.footer a { color: inherit; }
+
+.tracklist { margin: 2px 0 16px; border-top: 1px solid rgba(128,128,128,.25); padding-top: 10px; }
+.tracklist summary { cursor: pointer; font-weight: 600; font-size: .9rem; list-style: none; }
+.tracklist summary::-webkit-details-marker { display: none; }
+.tracklist summary::after { content: " ▾"; opacity: .6; }
+.tracklist:not([open]) summary::after { content: " ▸"; }
+.tracklist summary small { opacity: .6; font-weight: 500; margin-left: 4px; }
+.tracklist ol { list-style: none; max-height: 210px; overflow-y: auto; margin-top: 8px; padding-right: 6px; font-size: .88rem; }
+.tracklist li { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(128,128,128,.12); }
+.tracklist li.tl-head {
+  display: block; border: 0; padding: 10px 0 2px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: .7;
+}
+.tracklist li.tl-head:first-child { padding-top: 0; }
+.tl-pos, .tl-dur { opacity: .55; font-variant-numeric: tabular-nums; }
+.detail[data-format="LP"] .tl-head { color: var(--accent-2); opacity: 1; }
+.dg-credit { margin-top: 10px; font-size: .78rem; opacity: .6; text-decoration: none; }
+.dg-credit:hover { opacity: 1; text-decoration: underline; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .hero { grid-template-columns: 1fr; }
