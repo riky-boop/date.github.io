@@ -5,7 +5,7 @@ const FORMATS = { LP: "Vinili", CD: "CD", DVD: "DVD" };
 let items = [];
 const $ = (sel) => document.querySelector(sel);
 
-const state = { format: "", query: "", genre: "", decade: "", condition: "", sort: "artist", inStock: false };
+const state = { format: "", query: "", genre: "", decade: "", sort: "artist", inStock: false };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -29,7 +29,7 @@ function coverStyle(item) {
     `repeating-linear-gradient(${(h >> 3) % 180}deg, hsl(${hue} 70% 50%) 0 14px, hsl(${hue2} 70% 30%) 14px 28px)`,
     `conic-gradient(from ${h % 360}deg at 70% 30%, hsl(${hue} 80% 55%), hsl(${hue2} 70% 35%), hsl(${hue} 60% 20%), hsl(${hue} 80% 55%))`,
   ];
-  return { bg: patterns[h % patterns.length], label: `hsl(${hue2} 85% 60%)` };
+  return { bg: patterns[h % patterns.length], label: `hsl(${hue2} 85% 60%)`, hue };
 }
 
 function availability(stock) {
@@ -42,7 +42,6 @@ function coverHTML(item) {
   const c = coverStyle(item);
   const badges = [
     item.isNew ? `<span class="badge new">Novità</span>` : "",
-    item.condition === "Usato" ? `<span class="badge used">Usato</span>` : "",
   ].join("");
   return `
     <div class="cover-wrap">
@@ -73,7 +72,6 @@ function filtered() {
     (!state.format || it.format === state.format) &&
     (!state.genre || it.genre === state.genre) &&
     (!state.decade || decadeOf(it.year) === +state.decade) &&
-    (!state.condition || it.condition === state.condition) &&
     (!state.inStock || it.stock > 0) &&
     (!q || norm(`${it.artist} ${it.title} ${it.label} ${it.genre} ${it.year}`).includes(q))
   );
@@ -114,7 +112,7 @@ function setupFilters() {
   const decades = [...new Set(items.map((i) => decadeOf(i.year)))].sort((a, b) => b - a);
   $("#decade").innerHTML = `<option value="">Tutti gli anni</option>` + decades.map((d) => `<option value="${d}">Anni ${String(d).slice(2)}${d >= 2000 ? ` (${d})` : ""}</option>`).join("");
 
-  for (const key of ["genre", "decade", "condition", "sort"]) {
+  for (const key of ["genre", "decade", "sort"]) {
     $("#" + key).addEventListener("change", (e) => { state[key] = e.target.value; render(); });
   }
   $("#query").addEventListener("input", (e) => { state.query = e.target.value; render(); });
@@ -129,29 +127,51 @@ function setupFilters() {
   });
 }
 
+/* Ogni formato ha la sua scheda: vinile caldo, CD argento, DVD cinema. */
+const DETAIL = {
+  LP:  { kicker: "Vinile · LP", specs: ['12"', "33⅓ giri", "Lato A · Lato B"], disc: "33⅓", cta: "Prenota il vinile" },
+  CD:  { kicker: "Compact Disc", specs: ["CD audio", "12 cm", "Jewel case"], disc: "", cta: "Prenota il CD" },
+  DVD: { kicker: "DVD Video", specs: ["DVD Video", "Live & film musicali", "Custodia DVD"], disc: "DVD", cta: "Prenota il DVD" },
+};
+
 function openDetail(id) {
   const it = items.find((i) => i.id === id);
   if (!it) return;
+  const c = coverStyle(it);
+  const d = DETAIL[it.format];
   const msg = encodeURIComponent(`Ciao Discostar! È disponibile "${it.title}" di ${it.artist} (${it.format})?`);
+  $("#modal").dataset.format = it.format;
   $("#modalBody").innerHTML = `
-    <div class="detail card" data-format="${it.format}">
-      ${coverHTML(it)}
+    <article class="detail" data-format="${it.format}" style="--h:${c.hue}">
+      <div class="detail-art">
+        ${it.format === "DVD" ? `<div class="screen" style="--cover:${c.bg}"><span class="play" aria-hidden="true">▶</span></div>` : ""}
+        <div class="detail-object">
+          <div class="detail-disc"><div class="disc-spin" style="--disc-label:${c.label}"><span>${d.disc}</span></div></div>
+          <div class="detail-cover" style="background:${c.bg}">
+            <div class="cover-glyph">${esc(it.artist.replace(/^the /i, "")[0])}</div>
+            <div class="cover-text"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div>
+          </div>
+        </div>
+      </div>
       <div class="detail-info">
-        <span class="fmt">${FORMATS[it.format].toUpperCase()} · ${it.condition.toUpperCase()}</span>
+        <span class="fmt">${d.kicker}${it.isNew ? ` · <em>Novità</em>` : ""}</span>
         <h3>${esc(it.title)}</h3>
         <p class="by">${esc(it.artist)}</p>
+        <ul class="spec-pills">${d.specs.map((s) => `<li>${s}</li>`).join("")}</ul>
         <dl class="specs">
           <dt>Anno</dt><dd>${it.year}</dd>
           <dt>Genere</dt><dd>${esc(it.genre)}</dd>
           <dt>Etichetta</dt><dd>${esc(it.label)}</dd>
-          <dt>Stato</dt><dd>${availability(it.stock)}</dd>
         </dl>
-        <span class="detail-price">${euro(it.price)}</span>
+        <div class="buy">
+          <span class="detail-price">${euro(it.price)}</span>
+          ${availability(it.stock)}
+        </div>
         <a class="cta" target="_blank" rel="noopener" href="https://wa.me/${SHOP.whatsapp}?text=${msg}">
-          ${it.stock > 0 ? "Prenota su WhatsApp" : "Chiedi quando torna"}
+          ${it.stock > 0 ? d.cta : "Avvisami quando torna"}
         </a>
       </div>
-    </div>`;
+    </article>`;
   $("#modal").showModal();
 }
 

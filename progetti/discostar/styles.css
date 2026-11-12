@@ -217,7 +217,6 @@ h2 { font-family: var(--display); font-size: clamp(1.8rem, 3.4vw, 2.6rem); lette
   padding: 3px 7px; border-radius: 4px; background: rgba(0,0,0,.72); color: #fff;
 }
 .badge.new { background: var(--accent-2); color: #1a1a1a; }
-.badge.used { background: #fff; color: #1a1a1a; }
 
 .meta { display: flex; flex-direction: column; gap: 2px; }
 .meta .title { font-weight: 600; line-height: 1.25; }
@@ -278,28 +277,154 @@ h2 { font-family: var(--display); font-size: clamp(1.8rem, 3.4vw, 2.6rem); lette
   width: 36px; height: 36px; border-radius: 50%; border: 0; cursor: pointer;
   background: rgba(0,0,0,.5); color: #fff; font-size: 1.4rem; line-height: 1;
 }
-.detail { display: grid; grid-template-columns: 1fr 1fr; }
-.detail .cover-wrap { margin: 32px; }
-.detail .cover { position: absolute; }
-.detail-info { padding: 40px 36px 36px 8px; display: flex; flex-direction: column; gap: 6px; }
-.detail-info .fmt { color: var(--accent); font-weight: 700; letter-spacing: .12em; font-size: .8rem; }
+.modal { max-height: 92vh; overflow-y: auto; }
+
+/* ---------- Scheda prodotto: base comune ---------- */
+.detail { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 460px; position: relative; overflow: hidden; }
+.detail-art { position: relative; display: grid; place-items: center; padding: 48px 40px; }
+.detail-object { position: relative; width: min(100%, 300px); aspect-ratio: 1; }
+.detail-cover {
+  position: absolute; inset: 0; z-index: 2; border-radius: 6px; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 16px;
+  box-shadow: 0 24px 50px rgba(0,0,0,.5);
+}
+.detail-cover .cover-text b { font-size: 1.3rem; }
+.detail-disc { position: absolute; inset: 3%; z-index: 1; }
+.disc-spin { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; }
+.disc-spin span {
+  width: 34%; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--display); font-weight: 700; font-size: .8rem; color: #1a1a1a;
+}
+.detail-info { padding: 48px 40px 40px 8px; display: flex; flex-direction: column; gap: 6px; position: relative; z-index: 1; }
+.detail-info .fmt { font-weight: 700; letter-spacing: .14em; font-size: .78rem; text-transform: uppercase; }
+.detail-info .fmt em { font-style: normal; color: var(--accent-2); }
 .detail-info h3 { font-family: var(--display); font-size: 2rem; line-height: 1.05; letter-spacing: -.02em; }
-.detail-info .by { color: var(--muted); font-size: 1.1rem; margin-bottom: 14px; }
+.detail-info .by { color: var(--muted); font-size: 1.1rem; margin-bottom: 10px; }
+.spec-pills { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.spec-pills li { font-size: .76rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid currentColor; }
 .specs { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; font-size: .92rem; margin-bottom: 18px; }
 .specs dt { color: var(--muted); }
+.buy { display: flex; align-items: baseline; gap: 14px; margin-top: auto; }
 .detail-price { font-family: var(--display); font-size: 2.2rem; font-weight: 700; }
 .cta {
   display: inline-block; margin-top: 14px; text-align: center; text-decoration: none;
   background: var(--accent); color: #fff; padding: 12px 22px; border-radius: 999px; font-weight: 600;
+  transition: transform .15s;
+}
+.cta:hover { transform: translateY(-2px); }
+
+/* ---------- LP: vinile caldo, il disco esce dalla copertina e gira ---------- */
+.detail[data-format="LP"] { background: radial-gradient(120% 90% at 15% 20%, hsl(var(--h) 55% 24%), #15110e 62%); }
+.detail[data-format="LP"] .detail-art { padding-right: 120px; }
+.detail[data-format="LP"] .detail-disc { transform: translateX(46%); animation: lpOut 1s .2s cubic-bezier(.2,.8,.2,1) backwards; }
+@keyframes lpOut { from { transform: translateX(0); } }
+.detail[data-format="LP"] .disc-spin {
+  background:
+    conic-gradient(from 20deg, transparent 0 18%, rgba(255,255,255,.08) 24%, transparent 30% 68%, rgba(255,255,255,.06) 74%, transparent 80%),
+    repeating-radial-gradient(circle, #0d0d0d 0 1.5px, #1c1c1c 1.5px 3px);
+  box-shadow: 0 24px 50px rgba(0,0,0,.6);
+  animation: spin 1.8s linear infinite; /* 33⅓ giri al minuto */
+}
+.detail[data-format="LP"] .disc-spin span { background: var(--disc-label); }
+.detail[data-format="LP"] .fmt { color: var(--accent); }
+.detail[data-format="LP"] .spec-pills li { color: var(--accent-2); }
+
+/* ---------- CD: argento chiaro, custodia jewel case, disco iridescente ---------- */
+.modal[data-format="CD"] { background: #dfe4ea; border-color: #c2c9d2; }
+.modal[data-format="CD"] .modal-close { background: rgba(20,23,28,.1); color: #14171c; }
+.detail[data-format="CD"] { grid-template-columns: 1fr 1.05fr; color: #14171c; background: linear-gradient(150deg, #f5f7fa, #cdd5de); }
+.detail[data-format="CD"] .detail-art { order: 2; padding: 90px 50px 40px 30px; }
+.detail[data-format="CD"] .detail-object { width: min(100%, 260px); }
+.detail[data-format="CD"] .detail-cover { border-radius: 2px; box-shadow: 0 24px 40px rgba(20,30,50,.35); }
+.detail[data-format="CD"] .detail-cover::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 8%; z-index: 1;
+  background: linear-gradient(90deg, rgba(255,255,255,.45), rgba(255,255,255,.15)); border-right: 1px solid rgba(255,255,255,.5);
+}
+.detail[data-format="CD"] .detail-cover::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(115deg, rgba(255,255,255,.4) 0 14%, transparent 28% 70%, rgba(255,255,255,.12) 85%);
+}
+.detail[data-format="CD"] .detail-disc { inset: 6%; transform: translate(24%, -36%); animation: cdOut 1s .2s cubic-bezier(.2,.8,.2,1) backwards; }
+@keyframes cdOut { from { transform: translate(0, 0); } }
+.detail[data-format="CD"] .disc-spin {
+  background:
+    radial-gradient(circle, transparent 0 7%, #eef1f4 7.5% 15%, rgba(255,255,255,.35) 15.5% 17%, transparent 17.5%),
+    conic-gradient(from 0deg, #e3e8ee, #b9efff, #ffd3f1, #fff1b8, #c9ffd9, #c8d4ff, #e3e8ee);
+  box-shadow: 0 10px 30px rgba(20,30,50,.3), inset 0 0 0 1px rgba(0,0,0,.08);
+  animation: spin 4s linear infinite;
+}
+.detail[data-format="CD"] .disc-spin span { display: none; }
+.detail[data-format="CD"] .detail-info { padding: 48px 8px 40px 44px; }
+.detail[data-format="CD"] .fmt { color: #2563eb; }
+.detail[data-format="CD"] .by, .detail[data-format="CD"] .specs dt { color: #5b6573; }
+.detail[data-format="CD"] .spec-pills li { color: #334155; }
+.detail[data-format="CD"] .cta { background: #14171c; }
+.detail[data-format="CD"] .avail { color: #1f8f45; }
+.detail[data-format="CD"] .avail.low { color: #a15c00; }
+.detail[data-format="CD"] .avail.out { color: #c62828; }
+
+/* ---------- DVD: cinema, schermo panoramico e custodia alta ---------- */
+.detail[data-format="DVD"] { display: block; min-height: 0; background: #07080c; }
+.detail[data-format="DVD"] .detail-art { display: block; padding: 0; }
+.screen { position: relative; height: 230px; overflow: hidden; background: #000; }
+.screen::before {
+  content: ""; position: absolute; inset: -30px; background: var(--cover);
+  filter: blur(18px) brightness(.55) saturate(1.3);
+}
+.screen::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(#000 0 12%, transparent 12% 88%, #000 88%),
+    radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,.7));
+}
+.play {
+  position: absolute; z-index: 1; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; padding-left: 4px;
+  border: 2px solid rgba(255,255,255,.85); color: #fff; font-size: 1.3rem;
+  background: rgba(255,255,255,.08); backdrop-filter: blur(4px);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse { 50% { box-shadow: 0 0 0 16px rgba(255,255,255,.07); } }
+.detail[data-format="DVD"] .detail-object {
+  position: absolute; left: 40px; top: 120px; width: 180px; aspect-ratio: .7; z-index: 2;
+  animation: dvdIn .7s .1s cubic-bezier(.2,.8,.2,1) backwards;
+}
+@keyframes dvdIn { from { opacity: 0; transform: translateY(40px) rotate(-4deg); } }
+.detail[data-format="DVD"] .detail-cover {
+  border-radius: 4px; padding-top: 30px;
+  box-shadow: 0 30px 60px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.08);
+}
+.detail[data-format="DVD"] .detail-cover::before {
+  content: "DVD VIDEO"; position: absolute; left: 0; right: 0; top: 0; height: 18px; z-index: 1;
+  background: #1d4ed8; color: #fff; font: 800 .62rem/18px var(--body); letter-spacing: .14em; padding-left: 8px;
+}
+.detail[data-format="DVD"] .detail-disc { display: none; }
+.detail[data-format="DVD"] .detail-info { padding: 26px 40px 36px 256px; min-height: 270px; }
+.detail[data-format="DVD"] .fmt { color: #60a5fa; }
+.detail[data-format="DVD"] .spec-pills li { color: #93c5fd; }
+.detail[data-format="DVD"] .cta { background: #2563eb; }
+
+@media (max-width: 860px) {
+  .detail { grid-template-columns: 1fr !important; min-height: 0; }
+  .detail-info, .detail[data-format="CD"] .detail-info { padding: 8px 28px 32px; }
+  .detail[data-format="LP"] .detail-art { padding: 36px 36% 16px 28px; }
+  .detail[data-format="CD"] .detail-art { order: 0; padding: 80px 28px 16px; }
+  .detail[data-format="CD"] .detail-object { width: 200px; }
+  .screen { height: 170px; }
+  .detail[data-format="DVD"] .detail-object { left: 24px; top: 90px; width: 120px; }
+  .detail[data-format="DVD"] .detail-info { padding: 20px 24px 30px 168px; min-height: 200px; }
+}
+@media (max-width: 520px) {
+  .detail-info h3 { font-size: 1.6rem; }
+  .detail[data-format="DVD"] .detail-object { width: 104px; }
+  .detail[data-format="DVD"] .detail-info { padding: 100px 22px 28px; }
 }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .hero { grid-template-columns: 1fr; }
   .hero-visual { max-width: 320px; order: -1; }
-  .shop, .detail { grid-template-columns: 1fr; }
-  .detail-info { padding: 0 28px 32px; }
-  .detail .cover-wrap { margin: 28px 28px 20px; }
+  .shop { grid-template-columns: 1fr; }
   .nav a:not(:nth-child(2)) { display: none; }
 }
 @media (max-width: 520px) {

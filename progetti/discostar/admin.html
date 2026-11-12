@@ -92,7 +92,6 @@
             <th data-sort="title">Titolo</th>
             <th data-sort="year">Anno</th>
             <th data-sort="genre">Genere</th>
-            <th data-sort="condition">Cond.</th>
             <th data-sort="price" class="num">Prezzo €</th>
             <th data-sort="stock" class="num">Pezzi</th>
             <th>Novità</th>
@@ -117,11 +116,8 @@
     <form id="form" method="dialog">
       <h2 id="formTitle">Nuovo articolo</h2>
       <div class="form-grid">
-        <label>Formato
+        <label class="wide">Formato
           <select name="format" class="input" required><option>LP</option><option>CD</option><option>DVD</option></select>
-        </label>
-        <label>Condizione
-          <select name="condition" class="input"><option>Nuovo</option><option>Usato</option></select>
         </label>
         <label class="wide">Artista <input name="artist" class="input" required /></label>
         <label class="wide">Titolo <input name="title" class="input" required /></label>

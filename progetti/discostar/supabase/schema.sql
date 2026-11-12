@@ -9,11 +9,13 @@ create table if not exists public.items (
   genre      text not null default 'Altro',
   label      text not null default '',
   price      numeric(8, 2) not null default 0 check (price >= 0),
-  condition  text not null default 'Nuovo' check (condition in ('Nuovo', 'Usato')),
   stock      int not null default 0 check (stock >= 0),
   "isNew"    boolean not null default false,
   updated_at timestamptz not null default now()
 );
+
+-- Il negozio vende solo articoli nuovi: rimuove la colonna se creata da una versione precedente.
+alter table public.items drop column if exists condition;
 
 -- Chi può modificare il catalogo: aggiungi qui le email degli amministratori.
 create table if not exists public.admins (

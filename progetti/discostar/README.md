@@ -26,7 +26,7 @@ La *anon key* è pubblica per natura: chiunque può **leggere** il catalogo, sol
 
 ## Usare la gestione
 - Prezzo e pezzi si modificano direttamente in tabella (+/−); "Novità" con la spunta.
-- **Modifica** per gli altri campi, **Duplica** per un'altra copia (es. usato), **Elimina**.
+- **Modifica** per gli altri campi, **Duplica** per un articolo simile, **Elimina**.
 - **Esporta CSV** → modifica in Excel → **Importa CSV**: le righe con `id` vengono aggiornate, quelle senza vengono aggiunte; l'importazione non elimina nulla.
 
 ## Pubblicazione

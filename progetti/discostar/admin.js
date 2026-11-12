@@ -1,5 +1,5 @@
 /* Gestione catalogo: ogni modifica viene salvata subito su Supabase. */
-const FIELDS = ["format", "artist", "title", "year", "genre", "label", "price", "condition", "stock", "isNew"];
+const FIELDS = ["format", "artist", "title", "year", "genre", "label", "price", "stock", "isNew"];
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -85,7 +85,7 @@ $("#logoutBtn").addEventListener("click", async () => {
 
 async function enterApp() {
   show("appView");
-  $("#rows").innerHTML = `<tr><td colspan="10" class="muted">Caricamento…</td></tr>`;
+  $("#rows").innerHTML = `<tr><td colspan="9" class="muted">Caricamento…</td></tr>`;
   const { data: isAdmin } = await db.rpc("is_admin");
   canEdit = !!isAdmin;
   $("#notAdmin").hidden = canEdit;
@@ -93,7 +93,7 @@ async function enterApp() {
   try {
     items = await fetchAll();
   } catch (err) {
-    $("#rows").innerHTML = `<tr><td colspan="10" class="error">Impossibile caricare il catalogo: ${esc(err.message)}</td></tr>`;
+    $("#rows").innerHTML = `<tr><td colspan="9" class="error">Impossibile caricare il catalogo: ${esc(err.message)}</td></tr>`;
     return;
   }
   render();
@@ -136,7 +136,6 @@ function render() {
       <td class="title">${esc(i.title)}</td>
       <td>${i.year || ""}</td>
       <td>${esc(i.genre)}</td>
-      <td>${i.condition}</td>
       <td class="num"><input class="cell-input" type="number" step="0.01" min="0" data-act="price" value="${i.price.toFixed(2)}" aria-label="Prezzo" /></td>
       <td class="num"><span class="stock">
         <button data-act="dec" aria-label="Diminuisci">−</button>
@@ -145,7 +144,7 @@ function render() {
       </span></td>
       <td><input type="checkbox" data-act="new" ${i.isNew ? "checked" : ""} aria-label="Nuovo arrivo" /></td>
       <td><button class="btn small" data-act="edit">Modifica</button></td>
-    </tr>`).join("") || `<tr><td colspan="10" class="muted">Nessun articolo trovato.</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="9" class="muted">Nessun articolo trovato.</td></tr>`;
 
   const count = (f) => items.filter((i) => i.format === f).length;
   const out = items.filter((i) => i.stock === 0).length;
@@ -210,7 +209,7 @@ function openEditor(item, prefill) {
   editingId = item ? item.id : null;
   $("#formTitle").textContent = item ? "Modifica articolo" : "Nuovo articolo";
   $("#deleteBtn").hidden = $("#duplicateBtn").hidden = !item || !canEdit;
-  const data = item || prefill || { format: "LP", condition: "Nuovo", year: new Date().getFullYear(), stock: 1, isNew: true };
+  const data = item || prefill || { format: "LP", year: new Date().getFullYear(), stock: 1, isNew: true };
   for (const f of FIELDS) {
     const input = form.elements[f];
     if (input.type === "checkbox") input.checked = !!data[f];
@@ -230,7 +229,6 @@ function formData() {
     genre: el.genre.value.trim(),
     label: el.label.value.trim(),
     price: round2(+el.price.value),
-    condition: el.condition.value,
     stock: Math.floor(+el.stock.value),
     isNew: el.isNew.checked,
   };
@@ -345,7 +343,6 @@ function rowsToItems(rows) {
       genre: o.genre || "Altro",
       label: o.label || "",
       price: round2(parseFloat(String(o.price).replace(/[€\s]/g, "").replace(",", ".")) || 0),
-      condition: /^usat/i.test(o.condition) ? "Usato" : "Nuovo",
       stock: Math.max(0, parseInt(o.stock) || 0),
       isNew: /^(si|sì|s|true|1|x|yes)$/i.test(o.isNew),
     };
